@@ -2,6 +2,8 @@
 
 Repository for creating models pretrained on language and aminoacid sequences similar to the [CLIP from OpenAI](https://openai.com/blog/clip/).
 
+Work in progress - more updates soon!
+
 
 ## Citations
 
