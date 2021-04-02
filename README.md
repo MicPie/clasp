@@ -4,6 +4,10 @@ Repository for creating models pretrained on language and aminoacid sequences si
 
 Work in progress - more updates soon!
 
+## Resources
+
+See [interesting resources](https://github.com/MicPie/clasp/blob/main/resources.md) (feel free to add interesting stuff).
+
 
 ## Citations
 
