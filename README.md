@@ -6,7 +6,7 @@ Work in progress - more updates soon!
 
 ## Resources
 
-See [interesting resources](https://github.com/MicPie/clasp/blob/main/resources.md) (feel free to add interesting stuff).
+See [interesting resources](https://github.com/MicPie/clasp/blob/main/resources.md) (feel free to add interesting material that could be useful).
 
 
 ## Citations
