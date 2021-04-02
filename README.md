@@ -1,6 +1,6 @@
 ## CLASP - Contrastive Language-Aminoacid Sequence Pretraining
 
-Repository for creating models pretrained on language and aminoacid sequences similar to the [ConVIRT](https://arxiv.org/abs/2010.00747) and [CLIP](https://openai.com/blog/clip/).
+Repository for creating models pretrained on language and aminoacid sequences similar to [ConVIRT](https://arxiv.org/abs/2010.00747) and [CLIP](https://openai.com/blog/clip/).
 
 Work in progress - more updates soon!
 
