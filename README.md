@@ -35,6 +35,7 @@ import torch
 
 from clasp import CLASP
 from clasp.transformer import Transformer
+from clasp.simple_tokenizer import tokenize
 
 # instantiate the attention models for text and bioseq
 
@@ -62,10 +63,9 @@ clasp = CLASP(
 
 # data
 
-text = torch.randint(0, 20000, (1, 1024))
-text_mask = torch.ones_like(text).bool()
+text, text_mask = tokenize(['Spike protein S2: HAMAP-Rule:MF_04099'], context_length = 1024, return_mask = True)
 
-bioseq = torch.randint(0, 21, (1, 512))
+bioseq = torch.randint(0, 21, (1, 511))         # when using sparse attention, should be 1 less than the sequence length
 bioseq_mask = torch.ones_like(bioseq).bool()
 
 # do the below with large batch sizes for many many iterations
