@@ -80,6 +80,19 @@ loss = clasp(
 loss.backward()
 ```
 
+Once trained
+
+```python
+
+scores = clasp(
+  texts,
+  bio_seq,
+  text_mask = text_mask,
+  bioseq_mask = bioseq_mask,
+  return_loss = False           # pass in return_loss -> False to get the scores
+)
+
+```
 ## Resources
 
 See [interesting resources](https://github.com/MicPie/clasp/blob/main/resources.md) (feel free to add interesting material that could be useful).
