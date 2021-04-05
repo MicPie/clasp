@@ -125,7 +125,7 @@ class SimpleTokenizer(object):
 
 tokenizer = SimpleTokenizer()
 
-def tokenize(texts, context_length = 256, add_start = False, add_end = False, truncate_text = False):
+def tokenize(texts, context_length = 256, add_start = False, add_end = False, truncate_text = False, return_mask = False):
     if isinstance(texts, str):
         texts = [texts]
 
@@ -141,5 +141,8 @@ def tokenize(texts, context_length = 256, add_start = False, add_end = False, tr
             else:
                 raise RuntimeError(f"Input {texts[i]} is too long for context length {context_length}")
         result[i, :len(tokens)] = torch.tensor(tokens)
+
+    if return_mask:
+        return result, result != 0
 
     return result
