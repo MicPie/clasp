@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 import subprocess
 
-# Note: Run preprocess_data.py file in the preproc directory of the repository.
+# Note: Run preprocess_data.py file in the main repository directory or the preproc directory of the repository.
 
 
 urls_download = ["https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.dat.gz",
@@ -99,7 +99,7 @@ def get_csv(path, fields):
                     
                 wline = ",".join([x.replace(",",";") for x in data.values()])+"\n"
                 wf.write(wline)
-                data = {k: "" for k in fields} # creat new empty data dict
+                data = {k: "" for k in fields} # create new empty data dict
                 continue
             
             key = linetype_conversion[rline[:2]] # get line key
