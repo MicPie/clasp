@@ -30,6 +30,7 @@ If both of the above succeeded, now you can train your long biosequences with `C
 
 ```python
 import torch
+from torch.optim import Adam
 
 from clasp import CLASP, Transformer, tokenize
 
@@ -66,11 +67,14 @@ bioseq_mask = torch.ones_like(bioseq).bool()
 
 # do the below with large batch sizes for many many iterations
 
+opt = Adam(clasp.parameters(), lr = 3e-4)
+
 loss = clasp(
     text,
     bioseq,
     text_mask = text_mask,
-    bioseq_mask = bioseq_mask
+    bioseq_mask = bioseq_mask,
+    return_loss = True               # set return loss to True
 )
 
 loss.backward()
@@ -84,8 +88,7 @@ scores = clasp(
     texts,
     bio_seq,
     text_mask = text_mask,
-    bioseq_mask = bioseq_mask,
-    return_loss = False           # pass in return_loss -> False to get the scores
+    bioseq_mask = bioseq_mask
 )
 
 ```
