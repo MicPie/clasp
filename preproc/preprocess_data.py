@@ -2,6 +2,7 @@ from datetime import datetime
 import os
 from pathlib import Path
 import subprocess
+import copy
 
 # Note: Run preprocess_data.py file in the main repository directory or the preproc directory of the repository.
 
@@ -44,14 +45,14 @@ linetype_conversion = {
     "OC": "clas", # Organism Classification
     "OX": "taxo", # Organism taxonomy cross-reference
     "OH": "host", # Organism Host
-    "RN": "lit", # Reference lines
-    "RP": "lit",
-    "RC": "lit",
-    "RX": "lit",
-    "RG": "lit",
-    "RA": "lit",
-    "RT": "lit",
-    "RL": "lit",
+    "RN": "refn", # Reference Number
+    "RP": "refp", # Reference Position
+    "RC": "refc", # Reference Comment
+    "RX": "refx", # Reference cross-reference
+    "RG": "refg", # Reference Group
+    "RA": "refa", # Reference Author
+    "RT": "reft", # Reference Title
+    "RL": "refl", # Reference Location
     "CC": "text", # free text comments
     "DR": "xdb", # Database cross-Reference
     "FT": "xns", # Cross-references to the nucleotide sequence database # RECHECK
@@ -62,7 +63,7 @@ linetype_conversion = {
     "  ": "seq",
 }
 
-preprocessing_fields = ["id","accn","date","desc","gene","spec","orga","clas","taxo","host","lit","text","xdb","ft","exist","kw","seqh","seq"]
+preprocessing_fields = ["id","accn","date","desc","gene","spec","orga","clas","taxo","host","refn", "refp", "refc", "refx", "refg", "refa", "reft", "refl", "text","xdb","ft","exist","kw","seqh","seq"]
 
 def get_csv(path, fields):
     path_out = path.split(".")[0]+".csv"
@@ -114,11 +115,63 @@ for path in paths_data:
     print(f"{datetime.now()} - Preprocessed file saved to: {path_out}")
 
 
+#print(f"{datetime.now()} - Getting string lengths for every column.")
+#cols = copy.deepcopy(preprocessing_fields)
+#cols.append("text_all")
+#
+#def get_cols_len_csv(path, cols):
+#    path_out = path.split(".")[0]+"_len.csv"
+#    print(f"Processing: {path}")
+#    print(f"Saving to:  {path_out}")
+#    i = 0
+#    with open(path, 'r') as rf, open(path_out, 'w') as wf:
+#        while True:
+#            if i % 1_000_000 == 0:
+#                print(i, end=", ")
+#            i += 1
+#
+#            line = rf.readline()
+#            if line == "": # EOF is an empty string
+#                break
+#
+#            line = line.replace("\n","").split(",")
+#
+#            if i == 1: # get index values for the wanted columns
+#                idx = dict()
+#                for c in cols:
+#                    if c == "text_all":
+#                        continue
+#                    idx[c] = line.index(c)
+#
+#                wline = ",".join(cols)+"\n" # write header
+#                wf.write(wline)
+#                continue
+#
+#            out = []
+#            text_all = 0
+#            for c in cols:
+#                if c == "id":
+#                    out.append(line[idx[c]].split(" ")[0])
+#                elif c == "text_all":
+#                    out.append(str(text_all))
+#                else:
+#                    length = len(line[idx[c]])
+#                    text_all += length
+#                    out.append(str(length))
+#
+#            wline = ",".join(out)+"\n"
+#            wf.write(wline)
+#    return path_out
+#
+#for path in paths_csv:
+#    path_out = get_cols_len_csv(path, cols)
+#    print(f"{datetime.now()} - String lengths data saved to: {path_out}")
+
+
 print(f"{datetime.now()} - Merging preprocessed csv files into one csv file.")
 path_csv_full = path_data_dir+"/uniprot_full.csv"
-for url in urls_download:
-    subprocess.run(["cat", paths_csv[0], f"<(tail +2 {paths_csv[1]})", ">", path_csv_full])
-    print(f"{datetime.now()} - Merged files saved to: {path_csv_full}")
+subprocess.run(["cat", paths_csv[0], f"<(tail +2 {paths_csv[1]})", ">", path_csv_full])
+print(f"{datetime.now()} - Merged files saved to: {path_csv_full}")
 
 
 print(f"{datetime.now()} - Data preprocessing done.")
