@@ -12,30 +12,26 @@ You can install the requirements with the following
 $ python setup.py install --user
 ```
 
-Then, you must bear the installation process for Microsoft's superb deepspeed sparse attention CUDA kernel.
-
-Firstly
+Then, you must install Microsoft's sparse attention CUDA kernel with the following two steps.
 
 ```bash
 $ sh install_deepspeed.sh
 ```
 
-Next, you need to install the pip package `triton`
+Next, you need to pip install the package `triton`
 
 ```bash
 $ pip install triton
 ```
 
-If both of the above succeeded, now you can train your long biosequences efficiently!
+If both of the above succeeded, now you can train your long biosequences with `CLASP`
 
 ## Usage
 
 ```python
 import torch
 
-from clasp import CLASP
-from clasp.transformer import Transformer
-from clasp.simple_tokenizer import tokenize
+from clasp import CLASP, Transformer, tokenize
 
 # instantiate the attention models for text and bioseq
 
@@ -85,11 +81,11 @@ Once trained
 ```python
 
 scores = clasp(
-  texts,
-  bio_seq,
-  text_mask = text_mask,
-  bioseq_mask = bioseq_mask,
-  return_loss = False           # pass in return_loss -> False to get the scores
+    texts,
+    bio_seq,
+    text_mask = text_mask,
+    bioseq_mask = bioseq_mask,
+    return_loss = False           # pass in return_loss -> False to get the scores
 )
 
 ```
