@@ -4,6 +4,91 @@ Repository for creating models pretrained on language and aminoacid sequences si
 
 Work in progress - more updates soon!
 
+## Requirements
+
+You can install the requirements with the following
+
+```bash
+$ python setup.py install --user
+```
+
+Then, you must install Microsoft's sparse attention CUDA kernel with the following two steps.
+
+```bash
+$ sh install_deepspeed.sh
+```
+
+Next, you need to pip install the package `triton`
+
+```bash
+$ pip install triton
+```
+
+If both of the above succeeded, now you can train your long biosequences with `CLASP`
+
+## Usage
+
+```python
+import torch
+
+from clasp import CLASP, Transformer, tokenize
+
+# instantiate the attention models for text and bioseq
+
+text_enc = Transformer(
+    num_tokens = 20000,
+    dim = 512,
+    depth = 6,
+    seq_len = 1024
+)
+
+bioseq_enc = Transformer(
+    num_tokens = 21,
+    dim = 512,
+    depth = 6,
+    seq_len = 512,
+    sparse_attn = True
+)
+
+# clasp (CLIP) trainer
+
+clasp = CLASP(
+    text_encoder = text_enc,
+    bioseq_encoder = bioseq_enc
+)
+
+# data
+
+text, text_mask = tokenize(['Spike protein S2: HAMAP-Rule:MF_04099'], context_length = 1024, return_mask = True)
+
+bioseq = torch.randint(0, 21, (1, 511))         # when using sparse attention, should be 1 less than the sequence length
+bioseq_mask = torch.ones_like(bioseq).bool()
+
+# do the below with large batch sizes for many many iterations
+
+loss = clasp(
+    text,
+    bioseq,
+    text_mask = text_mask,
+    bioseq_mask = bioseq_mask
+)
+
+loss.backward()
+```
+
+Once trained
+
+```python
+
+scores = clasp(
+    texts,
+    bio_seq,
+    text_mask = text_mask,
+    bioseq_mask = bioseq_mask,
+    return_loss = False           # pass in return_loss -> False to get the scores
+)
+
+```
 ## Resources
 
 See [interesting resources](https://github.com/MicPie/clasp/blob/main/resources.md) (feel free to add interesting material that could be useful).
