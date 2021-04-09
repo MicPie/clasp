@@ -1,6 +1,7 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
 import random
+import time
 
 
 def basic_rand_sampler(seq, sample_len):
@@ -47,8 +48,10 @@ class CLASPDataset(Dataset):
     def __init__(self, path, text_sampler, bioseq_sampler, text_tok, bioseq_tok):
         self.path = path
 
+        tp = time.time()
         with open(path, "r") as reader:
             self.data = reader.readlines()
+        print(f"Load data time: {time.time() - tp:.3f} s")
 
         self.cols = self.data.pop(0).split(",")
         self.len = len(self.data)
