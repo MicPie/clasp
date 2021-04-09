@@ -30,7 +30,7 @@ def basic_aa_tokenizer(seq, context_length, return_mask=True):
     seq_len = len(seq)
     seq_empty = torch.zeros(context_length - len(seq), dtype=torch.long)
     seq_tok   = torch.tensor([d[a] if a in aa else 22 for a in seq], dtype=torch.long)
-    seq = torch.cat([seq_tok, seq_empty], dim=0)#.unsqueeze(0)
+    seq = torch.cat([seq_tok, seq_empty], dim=0)
     if return_mask:
         mask = torch.zeros_like(seq).bool()
         mask[0:seq_len+1] = True
