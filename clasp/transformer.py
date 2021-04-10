@@ -8,6 +8,8 @@ from torch import nn, einsum
 import torch.nn.functional as F
 from einops import rearrange, repeat
 
+from clasp.positional import SinuEmb, apply_rotary_pos_emb
+
 # helpers
 
 def exists(val):
@@ -45,10 +47,13 @@ class Attention(nn.Module):
             nn.Dropout(dropout)
         )
 
-    def forward(self, x, mask = None):
+    def forward(self, x, mask = None, rel_pos_emb = None):
         b, n, _, h, device = *x.shape, self.heads, x.device
         qkv = self.to_qkv(x).chunk(3, dim = -1)
         q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = h), qkv)
+
+        if exists(rel_pos_emb):
+            q, k = apply_rotary_pos_emb(q, k, rel_pos_emb)
 
         dots = torch.einsum('b h i d, b h j d -> b h i j', q, k) * self.scale
         mask_value = max_neg_value(dots)
@@ -72,7 +77,6 @@ class SparseAttention(Attention):
         self,
         *args,
         block_size = 16,
-        text_seq_len = 256,
         num_random_blocks = None,
         **kwargs
     ):
@@ -81,21 +85,19 @@ class SparseAttention(Attention):
         self.block_size = block_size
 
         num_random_blocks = default(num_random_blocks, self.seq_len // block_size // 4)
-        global_block_indices = list(range(ceil(text_seq_len / block_size)))
 
         self.attn_fn = SparseSelfAttention(
             sparsity_config = VariableSparsityConfig(
                 num_heads = self.heads,
                 block = self.block_size,
                 num_random_blocks = num_random_blocks,
-                global_block_indices = global_block_indices,
                 attention = 'unidirectional' if self.causal else 'bidirectional'
             ),
             max_seq_length = self.seq_len,
             attn_mask_mode = 'add'
         )
 
-    def forward(self, x, mask = None):
+    def forward(self, x, mask = None, rel_pos_emb = None):
         b, n, _, h, device = *x.shape, self.heads, x.device
         remainder = n % self.block_size
         mask = default(mask, lambda: torch.ones(b, n, device = device).bool())
@@ -107,6 +109,9 @@ class SparseAttention(Attention):
 
         qkv = self.to_qkv(x).chunk(3, dim = -1)
         q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = h), qkv)
+
+        if exists(rel_pos_emb):
+            q, k = apply_rotary_pos_emb(q, k, rel_pos_emb)
 
         key_pad_mask = None
         if exists(mask):
@@ -161,12 +166,19 @@ class Transformer(nn.Module):
         ff_dropout = 0.,
         attn_types = None,
         image_fmap_size = None,
-        sparse_attn = False
+        sparse_attn = False,
+        rel_pos_emb = True
     ):
         super().__init__()
         self.token_emb = nn.Embedding(num_tokens, dim)
-        self.pos_emb = nn.Embedding(seq_len + 1, dim)
         self.cls_token = nn.Parameter(torch.randn(dim))
+
+        # positional embeddings
+
+        self.pos_emb = SinuEmb(dim, seq_len + 1)
+        self.rel_pos_emb = SinuEmb(dim_head, seq_len + 1) if rel_pos_emb else None
+
+        # layers
 
         layers = nn.ModuleList([])
         sparse_layer = cast_tuple(sparse_attn, depth)
@@ -201,10 +213,13 @@ class Transformer(nn.Module):
         if exists(mask):
             mask = F.pad(mask, (1, 0), value = True)
 
-        x += self.pos_emb(torch.arange(n + 1, device = device))
+        pos_emb = self.pos_emb(x)
+        rel_pos_emb = self.rel_pos_emb(x) if exists(self.rel_pos_emb) else None
+
+        x += rearrange(pos_emb, 'n d -> () n d')
 
         for attn, ff in self.layers:
-            x = attn(x, mask = mask) + x
+            x = attn(x, mask = mask, rel_pos_emb = rel_pos_emb) + x
             x = ff(x) + x
 
         return self.norm(x[:, 0])
