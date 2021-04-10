@@ -42,7 +42,7 @@ def basic_aa_tokenizer(seq, context_length, return_mask=True):
 
 class CLASPDataset(Dataset):
     """
-    Basic CLASP dataset that loads preprocess csv file into RAM.
+    Basic CLASP dataset that loads the preprocessed csv file into RAM.
         path: path to the csv file
     """
     def __init__(self, path, text_sampler, bioseq_sampler, text_tok, bioseq_tok):
@@ -54,7 +54,7 @@ class CLASPDataset(Dataset):
         print(f"Load data time: {time.time() - tp:.3f} s")
 
         self.cols = self.data.pop(0).split(",")
-        self.len = len(self.data)
+        self.len  = len(self.data)
 
         self.text_sampler   = text_sampler
         self.bioseq_sampler = bioseq_sampler
