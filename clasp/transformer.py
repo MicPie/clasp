@@ -47,13 +47,22 @@ class Attention(nn.Module):
             nn.Dropout(dropout)
         )
 
+    def apply_rel_pos_emb(self, q, k, rel_pos_emb = None):
+        if not exists(rel_pos_emb):
+            return q, k
+
+        (cls_q, q), (cls_k, k) = map(lambda t: (t[:, :, :1], t[:, :, 1:]), (q, k))
+        q, k = apply_rotary_pos_emb(q, k, rel_pos_emb)
+        q, k = map(lambda t: torch.cat(t, dim = -2), ((cls_q, q), (cls_k, k)))
+        return q, k
+
     def forward(self, x, mask = None, rel_pos_emb = None):
         b, n, _, h, device = *x.shape, self.heads, x.device
         qkv = self.to_qkv(x).chunk(3, dim = -1)
         q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = h), qkv)
 
         if exists(rel_pos_emb):
-            q, k = apply_rotary_pos_emb(q, k, rel_pos_emb)
+            q, k = self.apply_rel_pos_emb(q, k, rel_pos_emb)
 
         dots = torch.einsum('b h i d, b h j d -> b h i j', q, k) * self.scale
         mask_value = max_neg_value(dots)
@@ -110,8 +119,7 @@ class SparseAttention(Attention):
         qkv = self.to_qkv(x).chunk(3, dim = -1)
         q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = h), qkv)
 
-        if exists(rel_pos_emb):
-            q, k = apply_rotary_pos_emb(q, k, rel_pos_emb)
+        q, k = self.apply_rel_pos_emb(q, k, rel_pos_emb)
 
         key_pad_mask = None
         if exists(mask):
@@ -176,7 +184,7 @@ class Transformer(nn.Module):
         # positional embeddings
 
         self.pos_emb = SinuEmb(dim, seq_len + 1)
-        self.rel_pos_emb = SinuEmb(dim_head, seq_len + 1) if rel_pos_emb else None
+        self.rel_pos_emb = SinuEmb(dim_head, seq_len) if rel_pos_emb else None
 
         # layers
 
@@ -207,6 +215,8 @@ class Transformer(nn.Module):
         b, n, device = *x.shape, x.device
 
         x = self.token_emb(x)
+        rel_pos_emb = self.rel_pos_emb(x) if exists(self.rel_pos_emb) else None
+
         cls_tokens = repeat(self.cls_token, 'd -> b () d', b = b)
         x = torch.cat((cls_tokens, x), dim = 1)
 
@@ -214,8 +224,6 @@ class Transformer(nn.Module):
             mask = F.pad(mask, (1, 0), value = True)
 
         pos_emb = self.pos_emb(x)
-        rel_pos_emb = self.rel_pos_emb(x) if exists(self.rel_pos_emb) else None
-
         x += rearrange(pos_emb, 'n d -> () n d')
 
         for attn, ff in self.layers:
