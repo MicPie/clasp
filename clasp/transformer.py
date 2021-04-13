@@ -10,6 +10,8 @@ from einops import rearrange, repeat
 
 from clasp.positional import SinuEmb, apply_rotary_pos_emb
 
+from clasp.reversible import ReversibleSequence, SequentialSequence
+
 # helpers
 
 def exists(val):
@@ -175,7 +177,8 @@ class Transformer(nn.Module):
         attn_types = None,
         image_fmap_size = None,
         sparse_attn = False,
-        rel_pos_emb = True
+        rel_pos_emb = True,
+        reversible = False
     ):
         super().__init__()
         self.token_emb = nn.Embedding(num_tokens, dim)
@@ -208,7 +211,14 @@ class Transformer(nn.Module):
                 PreNorm(dim, FeedForward(dim, mult = ff_mult, dropout = ff_dropout))
             ]))
 
-        self.layers = layers
+        execute_type = ReversibleSequence if reversible else SequentialSequence
+
+        route_attn = ((True, False),) * depth
+        attn_route_map = {'mask': route_attn, 'rel_pos_emb': route_attn}
+        self.net = execute_type(layers, args_route = attn_route_map)
+
+        self.layers = execute_type(layers)
+
         self.norm = nn.LayerNorm(dim)
 
     def forward(self, x, mask = None):
@@ -226,8 +236,6 @@ class Transformer(nn.Module):
         pos_emb = self.pos_emb(x)
         x += rearrange(pos_emb, 'n d -> () n d')
 
-        for attn, ff in self.layers:
-            x = attn(x, mask = mask, rel_pos_emb = rel_pos_emb) + x
-            x = ff(x) + x
+        x = self.net(x)
 
         return self.norm(x[:, 0])
