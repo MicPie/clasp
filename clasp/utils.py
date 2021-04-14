@@ -46,6 +46,7 @@ class CLASPDataset(Dataset):
         path: path to the csv file
     """
     def __init__(self, path, text_sampler, bioseq_sampler, text_tok, bioseq_tok):
+        super().__init__()
         self.path = path
 
         tp = time.time()
