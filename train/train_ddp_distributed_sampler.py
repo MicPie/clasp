@@ -15,8 +15,8 @@ from clasp import CLASP, Transformer, tokenize, basic_rand_sampler, basic_aa_tok
 
 # multi-GPU training script based on https://pytorch.org/tutorials/intermediate/ddp_tutorial.html
 
-path_data = "/home/mmp/projects/clasp/data/uniprot_100_reduced.csv"
-#path_data = "/home/mmp/hdd1/ProTexCLIP/uniprot_sprot_reduced.csv"
+path_data = "~/projects/clasp/data/uniprot_100_reduced.csv"
+#path_data = "~/hdd1/ProTexCLIP/uniprot_sprot_reduced.csv"
 epochs = 2
 bs = 4
 world_size = 2

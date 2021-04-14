@@ -14,15 +14,10 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from clasp import CLASP, Transformer, tokenize, basic_rand_sampler, basic_aa_tokenizer, CLASPRankSplitDataset
 
 
-### TO DO
-# 1.) One encoder per GPU (check if currently a copy of the CLASP model is on each GPU)?
-# 2.) Check split dataset setup (worst case: split data, better case, load only parts of the data).
-
-
 # multi-GPU training script based on https://pytorch.org/tutorials/intermediate/ddp_tutorial.html
 
-file_path = "/home/mmp/hdd1/ProTexCLIP/uniprot_sprot.csv"
-path_offset_dict = '/home/mmp/hdd1/ProTexCLIP/uniprot_sprot_offset_dict.json'
+file_path = "~/hdd1/ProTexCLIP/uniprot_sprot.csv"
+path_offset_dict = '~/hdd1/ProTexCLIP/uniprot_sprot_offset_dict.json'
 
 with open(path_offset_dict, "r", encoding='utf-8') as data_file:
     offset_dict = json.load(data_file)
