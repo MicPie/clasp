@@ -44,7 +44,8 @@ text_enc = Transformer(
     num_tokens = 20000,
     dim = 512,
     depth = 6,
-    seq_len = 1024
+    seq_len = 1024,
+    reversible = True
 )
 
 bioseq_enc = Transformer(
@@ -52,7 +53,8 @@ bioseq_enc = Transformer(
     dim = 512,
     depth = 6,
     seq_len = 512,
-    sparse_attn = True
+    sparse_attn = True,
+    reversible = True
 )
 
 # clasp (CLIP) trainer
