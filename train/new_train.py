@@ -210,7 +210,7 @@ def train_ddp(args, model, optimizer, dl_train, epochs, logger=None, writer=None
                 optimizer.step()
 
             if args.rank == 0:
-                if step % args.save_interval_step == 0 and step != 0:
+                if step % args.save_interval_step == 0:
                     path_save = os.path.join(args.path_model, f"{'_'.join(str(datetime.now()).split('.')[0].split(' '))}_step{step:09d}.pt")
                     torch.save(ddp_model.state_dict(), path_save)
 
@@ -225,7 +225,7 @@ def train_ddp(args, model, optimizer, dl_train, epochs, logger=None, writer=None
             tp = time.time()
 
         if args.rank == 0:
-            if epoch % args.save_interval_epoch == 0 and epoch != 0:
+            if epoch % args.save_interval_epoch == 0:
                 path_save = os.path.join(args.path_model, f"{'_'.join(str(datetime.now()).split('.')[0].split(' '))}_epoch{epoch:03d}.pt")
                 torch.save(ddp_model.state_dict(), path_save)
 
