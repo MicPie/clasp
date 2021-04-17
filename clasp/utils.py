@@ -145,6 +145,7 @@ class CLASPRankSplitDataset(RankSplitDataset):
         sample = [x for x in sample if len(x) > 0]
 
         text   = " ".join(sample[:-2])
+        bioseq = sample[-1]
 
         text   = self.text_sampler(text)
         bioseq = self.bioseq_sampler(bioseq)

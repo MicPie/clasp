@@ -26,6 +26,7 @@ def main():
         lines = f.readlines()
 
     line_count = len(lines)
+    print(f"{datetime.now()} line count: {line_count}")
     del(lines)
 
     print(f"{datetime.now()} create offset dict")
