@@ -177,7 +177,6 @@ def train_ddp(args, model, optimizer, dl_train, epochs, logger=None, writer=None
 
         tp = time.time()
         for i, b in enumerate(dl):
-            if i == 4: break
             optimizer.zero_grad()
 
             dt = time.time() - tp
