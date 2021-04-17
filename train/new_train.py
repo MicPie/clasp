@@ -242,6 +242,7 @@ def train_ddp(args, model, optimizer, dl_train, epochs, logger=None, writer=None
 
         return model, optimizer, step
 
+    logger.info(f"{datetime.now()} rank: {args.rank} start training")
     for epoch in range(args.epochs):
         ddp_model, optimizer, step = one_epoch(args, ddp_model, optimizer, dl_train, epoch, step=step, train=True)
 
