@@ -28,7 +28,10 @@ def bytes_to_unicode():
     return dict(zip(bs, cs))
 
 def get_pairs(word):
-    return set(zip(word[:-1], word[1:]))
+    if len(word) > 1:
+        return set(zip(word[:-1], word[1:]))
+    else:
+        return set()
 
 def basic_clean(text):
     text = ftfy.fix_text(text)
