@@ -352,8 +352,9 @@ def trainer(rank, world_size):
     )
 
     if args.path_weights:
-        ckpt = torch.load(args.path_weights)
-        new_ckpt = OrderedDict() # TO DO: Check if this setup is really needed due to ddp.
+        # TO DO: Check if this setup is really needed due to ddp.
+        ckpt = torch.load(args.path_weights, map_location="cpu")
+        new_ckpt = OrderedDict() 
         for k, v in ckpt.items():
             name = k[7:] # remove "module."
             new_ckpt[name] = v
