@@ -23,7 +23,8 @@ from clasp import CLASP, Transformer, tokenize, basic_rand_sampler, basic_aa_tok
 
 # multi-GPU training script based on https://pytorch.org/tutorials/intermediate/ddp_tutorial.html
 
-# python train.py --id TEST --path-data "/home/mmp/hdd1/ProTexCLIP/uniprot_sprot.csv" --path-offsd "/home/mmp/hdd1/ProTexCLIP/uniprot_sprot_offset_dict.json" --save-interval-step 2 --dryrun
+# Example command to start a training run:
+# python train.py --id TEST --path-data "data/uniprot_sprot.csv" --path-offsd "data/uniprot_sprot_offset_dict.json" --save-interval-step 2 --path-weights "results/testrun8big/model/2021-04-18_03:18:10_step000010000.pt" --dryrun
 
 
 def get_args():
@@ -231,7 +232,7 @@ def train_ddp(args, model, optimizer, dl_train, epochs, logger=None, writer=None
             if args.rank == 0:
                 writer.add_scalars("2 timings/1 step", {"dt": dt, "bt": bt}, step)
                 if (step % args.save_interval_step == 0) and (step != 0):
-                    logger.info(f"{datetime.now()} step: {step:<9}{' '*11}bt: {batch_time.avg:<10.3f}dt: {data_time.avg:<10.3f}{'train' if train else 'valid'} loss: {losses.avg:<10.3f}")
+                    logger.info(f"{datetime.now()} epoch: {epoch:<5}step: {step:<9}bt: {batch_time.avg:<10.3f}dt: {data_time.avg:<10.3f}{'train' if train else 'valid'} loss: {losses.avg:<10.3f}")
                 step += 1
 
             tp = time.time()
