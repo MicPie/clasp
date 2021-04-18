@@ -14,6 +14,7 @@ import torch.multiprocessing as mp
 from torch.utils.data import Dataset, DataLoader
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.tensorboard import SummaryWriter
+from collections import OrderedDict
 
 from torch.nn.utils import clip_grad_norm_
 
@@ -345,27 +346,31 @@ def trainer(rank, world_size):
         sparse_attn = args.bsenc_sparse_attn
     )
 
-    clasp = CLASP(
+    model = CLASP(
         text_encoder = text_enc,
         bioseq_encoder = bioseq_enc
     )
 
     if args.path_weights:
         ckpt = torch.load(args.path_weights)
-        clasp.load_state_dict(ckpt)
+        new_state_dict = OrderedDict()
+        for k, v in state_dict.items():
+            name = k[7:] # remove "module."
+            new_state_dict[name] = v
+        model.load_state_dict(new_state_dict)
         logger.info(f"{datetime.now()} rank: {args.rank} reloaded model weights from {args.path_weights}")
 
     logger.info(f"{datetime.now()} rank: {args.rank} created clasp model")
 
     # optimizer
-    opt = Adam(clasp.parameters(), lr = 3e-4)
+    opt = Adam(model.parameters(), lr = 3e-4)
     logger.info(f"{datetime.now()} rank: {args.rank} created optimizer")
 
     # training
     if args.rank == 0:
-        train_ddp(args, model=clasp, optimizer=opt, dl_train=dl_train, epochs=args.epochs, logger=logger, writer=writer)
+        train_ddp(args, model=model, optimizer=opt, dl_train=dl_train, epochs=args.epochs, logger=logger, writer=writer)
     else:
-        train_ddp(args, model=clasp, optimizer=opt, dl_train=dl_train, epochs=args.epochs, logger=logger)
+        train_ddp(args, model=model, optimizer=opt, dl_train=dl_train, epochs=args.epochs, logger=logger)
     logger.info(f"{datetime.now()} rank: {args.rank} training finished")
 
 
