@@ -95,7 +95,7 @@ class SimpleTokenizer(object):
             if len(word) == 1:
                 break
             else:
-                pairs = get_pairs(tuple(word))
+                pairs = get_pairs(word)
         word = ' '.join(word)
         self.cache[token] = word
         return word

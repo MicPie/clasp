@@ -31,14 +31,14 @@ def basic_aa_tokenizer(seq, context_length, return_mask=True):
     Unknown char input gets mapped to 22.
     """
     seq_len = len(seq)
-    seq = torch.tensor([d[a] if a in aa else 22 for a in seq] + \
-                       [0] * (context_length - len(seq)), dtype=torch.long)
+    seq_wrap = torch.zeros(, dtype=torch.long) 
+    seq_wrap[:seq_len] = torch.tensor([d[a] if a in AA_VOCAB else 22 for a in seq], dtype=torch.long)
     if return_mask:
-        mask = torch.zeros_like(seq).bool()
+        mask = torch.zeros_like(seq_wrap, dtype=torch.bool)
         mask[0:seq_len] = True
-        return seq, mask
+        return seq_wrap, mask
     else:
-        return seq
+        return seq_wrap
 
 
 class CLASPDataset(Dataset):
