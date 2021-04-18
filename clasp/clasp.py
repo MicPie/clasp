@@ -32,8 +32,9 @@ class CLASP(nn.Module):
         temp = self.temperature.exp()
 
         if not return_loss:
-            sim = einsum('n d, n d -> n', text_latents, bioseq_latents) * temp
-            return sim
+#            sim = einsum('n d, n d -> n', text_latents, bioseq_latents) * temp
+#            return sim
+            return text_latents, bioseq_latents, temp
 
         sim = einsum('i d, j d -> i j', text_latents, bioseq_latents) * temp
         labels = torch.arange(b, device = device)
