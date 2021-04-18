@@ -239,8 +239,8 @@ def train_ddp(args, model, optimizer, dl_train, epochs, logger=None, writer=None
 
             all_text_latents = torch.cat(all_text_latents, dim=0)
             all_bioseq_latents = torch.cat(all_bioseq_latents, dim=0)
-            print(f"rank: {args.rank} all_text_latents: ",len(all_text_latents))
-            print(f"rank: {args.rank} all_bioseq_latents: ",len(all_bioseq_latents))
+            print(f"rank: {args.rank} all_text_latents: ",all_text_latents.shape)
+            print(f"rank: {args.rank} all_bioseq_latents: ",all_bioseq_latents.shape)
 
             # symmetric or not here?
             b, device = text_latents.shape[0], text_latents.device
@@ -248,9 +248,15 @@ def train_ddp(args, model, optimizer, dl_train, epochs, logger=None, writer=None
             #sim = einsum('i d, j d -> i j', all_text_latents, all_bioseq_latents) * temp # symmetric errors
             sim_text   = einsum('i d, j d -> i j', text_latents, all_bioseq_latents) * temp
             sim_bioseq = einsum('i d, j d -> i j', bioseq_latents, all_text_latents) * temp
+            print(f"rank: {args.rank} sim_text: {sim_text.shape}")
+            print(f"rank: {args.rank} sim_bioseq: {sim_bioseq.shape}")
             # Put here cosine similarity
-            #labels = torch.cat((torch.arange(b, device = device), torch.zeros_like(text_latents)), dim=1)
+            labels = torch.cat((torch.eye(b), torch.zeros(b,b)), dim=1).to(args.rank)
+            print(f"rank: {args.rank} labels: {labels.shape}")
             #loss = (F.cross_entropy(sim_text, labels) + F.cross_entropy(sim_bioseq, labels)) / 2
+            loss = ((F.cosine_similarity(sim_text, labels) + F.cosine_similarity(sim_bioseq, labels)) / 2).mean() #.contiguous()
+            print(f"rank: {args.rank} loss: {loss.item()}")
+            # TO DO: Fix "RuntimeError: Tensors must be contiguous" error with loss.backward.
 
             reduced_loss = reduce_tensor(loss.data, args.world_size)
             losses.update(reduced_loss.item())
