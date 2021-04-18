@@ -352,7 +352,7 @@ def trainer(rank, world_size):
 
     if args.path_weights:
         ckpt = torch.load(args.path_weights)
-        model.load_state_dict(ckpt)
+        clasp.load_state_dict(ckpt)
         logger.info(f"{datetime.now()} rank: {args.rank} reloaded model weights from {args.path_weights}")
 
     logger.info(f"{datetime.now()} rank: {args.rank} created clasp model")
