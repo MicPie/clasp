@@ -35,7 +35,7 @@ def basic_aa_tokenizer(seq, context_length, return_mask=True):
     seq = torch.cat([seq_tok, seq_empty], dim=0)
     if return_mask:
         mask = torch.zeros_like(seq).bool()
-        mask[0:seq_len+1] = True
+        mask[0:seq_len] = True
         return seq, mask
     else:
         return seq
@@ -140,11 +140,11 @@ class CLASPRankSplitDataset(RankSplitDataset):
         self.bioseq_tok = bioseq_tok
 
     def __getitem__(self, idx):
-        sample = self.data[idx][:-2] # without "\n"
+        sample = self.data[idx][:-1] # without "\n"
         sample = sample.split(",")
         sample = [x for x in sample if len(x) > 0]
 
-        text   = " ".join(sample[:-2])
+        text   = " ".join(sample[:-1])
         bioseq = sample[-1]
 
         text   = self.text_sampler(text)
@@ -154,3 +154,4 @@ class CLASPRankSplitDataset(RankSplitDataset):
         bioseq, bioseq_mask = self.bioseq_tok(bioseq)
 
         return text, text_mask, bioseq, bioseq_mask
+
