@@ -134,6 +134,23 @@ class SparseAttention(Attention):
 
 # classes
 
+# https://arxiv.org/abs/2103.17239
+class LayerScale(nn.Module):
+    def __init__(self, dim, depth, fn):
+        super().__init__()
+        if depth <= 18:
+            init_eps = 0.1
+        elif depth > 18 and depth <= 24:
+            init_eps = 1e-5
+        else:
+            init_eps = 1e-6
+
+        scale = torch.zeros(1, 1, dim).fill_(init_eps)
+        self.scale = nn.Parameter(scale)
+        self.fn = fn
+    def forward(self, x, **kwargs):
+        return self.fn(x, **kwargs) * self.scale
+
 class PreNorm(nn.Module):
     def __init__(self, dim, fn):
         super().__init__()
@@ -207,8 +224,8 @@ class Transformer(nn.Module):
                 raise ValueError(f'attention type "{attn_type}" is not valid')
 
             layers.append(nn.ModuleList([
-                PreNorm(dim, attn_class(dim, seq_len = seq_len, heads = heads, dim_head = dim_head, dropout = attn_dropout)),
-                PreNorm(dim, FeedForward(dim, mult = ff_mult, dropout = ff_dropout))
+                LayerScale(dim, ind + 1, PreNorm(dim, attn_class(dim, seq_len = seq_len, heads = heads, dim_head = dim_head, dropout = attn_dropout))),
+                LayerScale(dim, ind + 1, PreNorm(dim, FeedForward(dim, mult = ff_mult, dropout = ff_dropout)))
             ]))
 
         execute_type = ReversibleSequence if reversible else SequentialSequence
