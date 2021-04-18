@@ -4,6 +4,9 @@ import random
 import time
 from datetime import datetime
 
+AA_VOCAB = "ACDEFGHIKLMNOPQRSTUVWY"
+AA_DICT = {a: i for i, a in enumerate(AA_VOCAB)}
+
 
 def basic_rand_sampler(seq, sample_len):
     """
@@ -27,12 +30,9 @@ def basic_aa_tokenizer(seq, context_length, return_mask=True):
     Maps a number between 0 and 21 to each 21 proteogenic aminoacids.
     Unknown char input gets mapped to 22.
     """
-    aa = "ACDEFGHIKLMNOPQRSTUVWY"
-    d = {a: i for i, a in enumerate(aa)}
     seq_len = len(seq)
-    seq_empty = torch.zeros(context_length - len(seq), dtype=torch.long)
-    seq_tok   = torch.tensor([d[a] if a in aa else 22 for a in seq], dtype=torch.long)
-    seq = torch.cat([seq_tok, seq_empty], dim=0)
+    seq = torch.tensor([d[a] if a in aa else 22 for a in seq] + \
+                       [0] * (context_length - len(seq)), dtype=torch.long)
     if return_mask:
         mask = torch.zeros_like(seq).bool()
         mask[0:seq_len] = True
