@@ -9,7 +9,8 @@ from functools import partial
 import torch
 import torch.distributed as dist
 import torch.distributed.nn as distnn
-import torch.nn as nn
+from torch import nn, einsum
+import torch.nn.functional as F
 from torch.optim import Adam
 import torch.multiprocessing as mp
 from torch.utils.data import Dataset, DataLoader
@@ -236,6 +237,20 @@ def train_ddp(args, model, optimizer, dl_train, epochs, logger=None, writer=None
             print(f"rank: {args.rank} {torch.all(torch.eq(bioseq_latents, all_bioseq_latents[0]))}")
             print(f"rank: {args.rank} {torch.all(torch.eq(bioseq_latents, all_bioseq_latents[1]))}")
 
+            all_text_latents = torch.cat(all_text_latents, dim=0)
+            all_bioseq_latents = torch.cat(all_bioseq_latents, dim=0)
+            print(f"rank: {args.rank} all_text_latents: ",len(all_text_latents))
+            print(f"rank: {args.rank} all_bioseq_latents: ",len(all_bioseq_latents))
+
+            # symmetric or not here?
+            b, device = text_latents.shape[0], text_latents.device
+            #sim = einsum('i d, j d -> i j', text_latents, bioseq_latents) * temp
+            #sim = einsum('i d, j d -> i j', all_text_latents, all_bioseq_latents) * temp # symmetric errors
+            sim_text   = einsum('i d, j d -> i j', text_latents, all_bioseq_latents) * temp
+            sim_bioseq = einsum('i d, j d -> i j', bioseq_latents, all_text_latents) * temp
+            # Put here cosine similarity
+            #labels = torch.cat((torch.arange(b, device = device), torch.zeros_like(text_latents)), dim=1)
+            #loss = (F.cross_entropy(sim_text, labels) + F.cross_entropy(sim_bioseq, labels)) / 2
 
             reduced_loss = reduce_tensor(loss.data, args.world_size)
             losses.update(reduced_loss.item())
