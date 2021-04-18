@@ -22,9 +22,7 @@ from clasp import CLASP, Transformer, tokenize, basic_rand_sampler, basic_aa_tok
 
 # multi-GPU training script based on https://pytorch.org/tutorials/intermediate/ddp_tutorial.html
 
-# python new_train.py --id TEST --path-data "/home/mmp/hdd1/ProTexCLIP/uniprot_sprot.csv" --path-offsd "/home/mmp/hdd1/ProTexCLIP/uniprot_sprot_offset_dict.json"
-
-# python new_train.py --id TEST --path-data "/home/mmp/hdd1/ProTexCLIP/uniprot_sprot.csv" --path-offsd "/home/mmp/hdd1/ProTexCLIP/uniprot_sprot_offset_dict.json" --save-interval-step 2
+# python train.py --id TEST --path-data "/home/mmp/hdd1/ProTexCLIP/uniprot_sprot.csv" --path-offsd "/home/mmp/hdd1/ProTexCLIP/uniprot_sprot_offset_dict.json" --save-interval-step 2 --dryrun
 
 
 def get_args():
@@ -221,7 +219,7 @@ def train_ddp(args, model, optimizer, dl_train, epochs, logger=None, writer=None
                 optimizer.step()
 
             if args.rank == 0:
-                if step % args.save_interval_step == 0:
+                if (step % args.save_interval_step == 0) and (step != 0):
                     path_save = os.path.join(args.path_model, f"{'_'.join(str(datetime.now()).split('.')[0].split(' '))}_step{step:09d}.pt")
                     torch.save(ddp_model.state_dict(), path_save)
 
@@ -231,8 +229,8 @@ def train_ddp(args, model, optimizer, dl_train, epochs, logger=None, writer=None
             batch_time.update(bt)
             if args.rank == 0:
                 writer.add_scalars("2 timings/1 step", {"dt": dt, "bt": bt}, step)
-                if step % args.save_interval_step == 0:
-                    logger.info(f"{datetime.now()} step: {step:<5}{<14}bt: {batch_time.avg:<10.3f}dt: {data_time.avg:<10.3f}{'train' if train else 'valid'} loss: {losses.avg:<10.3f}")
+                if (step % args.save_interval_step == 0) and (step != 0):
+                    logger.info(f"{datetime.now()} step: {step:<5}{' '*15}bt: {batch_time.avg:<10.3f}dt: {data_time.avg:<10.3f}{'train' if train else 'valid'} loss: {losses.avg:<10.3f}")
                 step += 1
 
             tp = time.time()
