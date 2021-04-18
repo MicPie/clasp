@@ -40,6 +40,10 @@ def get_args():
                         help="path preprocessed offset dictionary json file for training")
     parser.add_argument("--path-results", type=str, default="results",
                         help="path to the results data, i.e., logs, model weights, etc. (default: results)")
+    parser.add_argument("--path-weights", type=str, default=None,
+                        help="path to weights for reloading (default: None)")
+    parser.add_argument("--numw", type=int, default=0,
+                        help="number of workers for pytorch dataloader (default: 0)")
 
     # training
     parser.add_argument("--world-size", type=int, default=2,
@@ -48,6 +52,8 @@ def get_args():
                         help="batch size (default: 24)")
     parser.add_argument("--epochs", type=int, default=2,
                         help="epochs (default: 2)")
+    parser.add_argument("--dryrun", action="store_true", default=False,
+                        help="Dry run for the setup runs only 4 steps in each epoch, use to test your setup (default: False)")
 
     # model
     # text encoder
@@ -79,8 +85,8 @@ def get_args():
     # logging and saving
     parser.add_argument("--save-interval-epoch", type=int, default=1,
                         help="save interval epoch (default: 1")
-    parser.add_argument("--save-interval-step", type=int, default=10_000,
-                        help="save interval step (default: 10_000")
+    parser.add_argument("--save-interval-step", type=int, default=4_000,
+                        help="save interval step (default: 4_000")
 
     args = parser.parse_args()
     args.cmd = " ".join("\""+arg+"\"" if " " in arg else arg for arg in sys.argv)
@@ -177,6 +183,11 @@ def train_ddp(args, model, optimizer, dl_train, epochs, logger=None, writer=None
 
         tp = time.time()
         for i, b in enumerate(dl):
+
+            if args.dryrun:
+                if i == 4:
+                    break
+
             optimizer.zero_grad()
 
             dt = time.time() - tp
@@ -220,6 +231,8 @@ def train_ddp(args, model, optimizer, dl_train, epochs, logger=None, writer=None
             batch_time.update(bt)
             if args.rank == 0:
                 writer.add_scalars("2 timings/1 step", {"dt": dt, "bt": bt}, step)
+                if step % args.save_interval_step == 0:
+                    logger.info(f"{datetime.now()} step: {step:<5}{<14}bt: {batch_time.avg:<10.3f}dt: {data_time.avg:<10.3f}{'train' if train else 'valid'} loss: {losses.avg:<10.3f}")
                 step += 1
 
             tp = time.time()
@@ -312,9 +325,9 @@ def trainer(rank, world_size):
     dl_train = DataLoader(ds_train,
                           batch_size=args.bs,
                           shuffle=True,
-                          num_workers=0,
+                          num_workers=args.numw,
                           pin_memory=True)
-    logger.info(f"{datetime.now()} rank: {args.rank} created dataloader")
+    logger.info(f"{datetime.now()} rank: {args.rank} created dataloader with length {len(dl_train)}")
 
     # model setup
     text_enc = Transformer(
@@ -338,6 +351,12 @@ def trainer(rank, world_size):
         text_encoder = text_enc,
         bioseq_encoder = bioseq_enc
     )
+
+    if args.path_weights:
+        ckpt = torch.load(args.path_weights)
+        model.load_state_dict(ckpt)
+        logger.info(f"{datetime.now()} rank: {args.rank} reloaded model weights from {args.path_weights}")
+
     logger.info(f"{datetime.now()} rank: {args.rank} created clasp model")
 
     # optimizer
