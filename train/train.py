@@ -353,11 +353,11 @@ def trainer(rank, world_size):
 
     if args.path_weights:
         ckpt = torch.load(args.path_weights)
-        new_state_dict = OrderedDict()
-        for k, v in state_dict.items():
+        new_ckpt = OrderedDict() # TO DO: Check if this setup is really needed due to ddp.
+        for k, v in ckpt.items():
             name = k[7:] # remove "module."
-            new_state_dict[name] = v
-        model.load_state_dict(new_state_dict)
+            new_ckpt[name] = v
+        model.load_state_dict(new_ckpt)
         logger.info(f"{datetime.now()} rank: {args.rank} reloaded model weights from {args.path_weights}")
 
     logger.info(f"{datetime.now()} rank: {args.rank} created clasp model")
