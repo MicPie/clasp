@@ -119,8 +119,8 @@ def create_logger(path_log, file_name):
 def setup(rank, world_size):
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '12355'
-    #dist.init_process_group("gloo", rank=rank, world_size=world_size)
-    dist.init_process_group("nccl", rank=rank, world_size=world_size)
+    dist.init_process_group("gloo", rank=rank, world_size=world_size)
+    #dist.init_process_group("nccl", rank=rank, world_size=world_size)
 
 
 def cleanup():
@@ -212,51 +212,79 @@ def train_ddp(args, model, optimizer, dl_train, epochs, logger=None, writer=None
                 return_loss = False # set return loss to True
             )
 
-            print(f"rank: {args.rank} text_latents: ",text_latents.shape)
-            print(f"rank: {args.rank} bioseq_latents: ",bioseq_latents.shape)
-            print(f"rank: {args.rank} temp: ",temp.shape)
+            #print(f"rank: {args.rank} text_latents: ",text_latents.shape)
+            #print(f"rank: {args.rank} bioseq_latents: ",bioseq_latents.shape)
+            #print(f"rank: {args.rank} temp: ",temp.shape)
 
-            all_text_latents   = distnn.all_gather(text_latents) #, args.rank)
-            all_bioseq_latents = distnn.all_gather(bioseq_latents) #, args.rank)
-            all_temp           = distnn.all_gather(temp) #, args.rank)
+            #all_text_latents   = distnn.all_gather(text_latents)
+            #all_bioseq_latents = distnn.all_gather(bioseq_latents)
+            #all_temp           = distnn.all_gather(temp)
+            all_text_latents   = [torch.zeros_like(text_latents) for _ in range(dist.get_world_size())]
+            dist.all_gather(all_text_latents, text_latents)
+            all_bioseq_latents = [torch.zeros_like(bioseq_latents) for _ in range(dist.get_world_size())]
+            dist.all_gather(all_bioseq_latents, bioseq_latents)
 
-            #print(f"rank: {args.rank} all_text_latents: ",all_text_latents.shape)
-            #print(f"rank: {args.rank} all_bioseq_latents: ",all_bioseq_latents.shape)
-            #print(f"rank: {args.rank} all_temp: ",all_temp.shape)
-            #print(torch.all(torch.eq(bioseq_latents, all_bioseq_latents)))
+            #print(f"rank: {args.rank} all_text_latents: ",len(all_text_latents))
+            #print(f"rank: {args.rank} all_bioseq_latents: ",len(all_bioseq_latents))
+            #print(f"rank: {args.rank} all_temp: ",len(all_temp))
+            #print(f"rank: {args.rank} all_text_latents[0]: ",all_text_latents[0].shape, all_text_latents[0].device)
+            #print(f"rank: {args.rank} all_text_latents[1]: ",all_text_latents[1].shape, all_text_latents[0].device)
+            #print(f"rank: {args.rank} all_bioseq_latents[0]: ",all_bioseq_latents[0].shape, all_bioseq_latents[0].device)
+            #print(f"rank: {args.rank} all_bioseq_latents[1]: ",all_bioseq_latents[1].shape, all_bioseq_latents[0].device)
+            #print(f"rank: {args.rank} all_temp[0]: ",all_temp[0].shape, all_temp[0].device)
+            #print(f"rank: {args.rank} all_temp[0]: ",all_temp[0].shape, all_temp[0].device)
+            #print(f"rank: {args.rank} {torch.all(torch.eq(bioseq_latents, all_bioseq_latents[0]))}")
+            #print(f"rank: {args.rank} {torch.all(torch.eq(bioseq_latents, all_bioseq_latents[1]))}")
 
-            print(f"rank: {args.rank} all_text_latents: ",len(all_text_latents))
-            print(f"rank: {args.rank} all_bioseq_latents: ",len(all_bioseq_latents))
-            print(f"rank: {args.rank} all_temp: ",len(all_temp))
-            print(f"rank: {args.rank} all_text_latents[0]: ",all_text_latents[0].shape, all_text_latents[0].device)
-            print(f"rank: {args.rank} all_text_latents[1]: ",all_text_latents[1].shape, all_text_latents[0].device)
-            print(f"rank: {args.rank} all_bioseq_latents[0]: ",all_bioseq_latents[0].shape, all_bioseq_latents[0].device)
-            print(f"rank: {args.rank} all_bioseq_latents[1]: ",all_bioseq_latents[1].shape, all_bioseq_latents[0].device)
-            print(f"rank: {args.rank} all_temp[0]: ",all_temp[0].shape, all_temp[0].device)
-            print(f"rank: {args.rank} all_temp[0]: ",all_temp[0].shape, all_temp[0].device)
-            print(f"rank: {args.rank} {torch.all(torch.eq(bioseq_latents, all_bioseq_latents[0]))}")
-            print(f"rank: {args.rank} {torch.all(torch.eq(bioseq_latents, all_bioseq_latents[1]))}")
-
+            #if args.rank == 0:
             all_text_latents = torch.cat(all_text_latents, dim=0)
             all_bioseq_latents = torch.cat(all_bioseq_latents, dim=0)
-            print(f"rank: {args.rank} all_text_latents: ",all_text_latents.shape)
-            print(f"rank: {args.rank} all_bioseq_latents: ",all_bioseq_latents.shape)
+            # test with the correct latents
+            #all_text_latents = all_text_latents[args.rank]
+            #all_bioseq_latents = all_bioseq_latents[args.rank]
+            #print(f"rank: {args.rank} all_text_latents: ",all_text_latents.shape)
+            #print(f"rank: {args.rank} all_text_latents.is_contiguous(): {all_text_latents.is_contiguous()}")
+            #print(f"rank: {args.rank} all_bioseq_latents: ",all_bioseq_latents.shape)
+            #print(f"rank: {args.rank} all_bioseq_latents.is_contiguous(): {all_bioseq_latents.is_contiguous()}")
 
-            # symmetric or not here?
             b, device = text_latents.shape[0], text_latents.device
+            #b, device = all_text_latents.shape[0], all_text_latents.device
             #sim = einsum('i d, j d -> i j', text_latents, bioseq_latents) * temp
-            #sim = einsum('i d, j d -> i j', all_text_latents, all_bioseq_latents) * temp # symmetric errors
-            sim_text   = einsum('i d, j d -> i j', text_latents, all_bioseq_latents) * temp
-            sim_bioseq = einsum('i d, j d -> i j', bioseq_latents, all_text_latents) * temp
-            print(f"rank: {args.rank} sim_text: {sim_text.shape}")
-            print(f"rank: {args.rank} sim_bioseq: {sim_bioseq.shape}")
-            # Put here cosine similarity
-            labels = torch.cat((torch.eye(b), torch.zeros(b,b)), dim=1).to(args.rank)
-            print(f"rank: {args.rank} labels: {labels.shape}")
+            sim_text   = (einsum('i d, j d -> i j', text_latents, all_bioseq_latents) * temp)
+            sim_bioseq = (einsum('i d, j d -> i j', bioseq_latents, all_text_latents) * temp)
+#            sim = (einsum('i d, j d -> i j', all_text_latents, all_bioseq_latents) * temp)
+            #print(f"rank: {args.rank} sim_text: {sim_text.shape}")
+            #print(f"rank: {args.rank} sim_text.is_contiguous(): {sim_text.is_contiguous()}")
+            #print(f"rank: {args.rank} sim_bioseq: {sim_bioseq.shape}")
+            #print(f"rank: {args.rank} sim_bioseq.is_contiguous(): {sim_bioseq.is_contiguous()}")
+            #labels = [torch.zeros(b,b) if x != args.rank else torch.eye(b) for x in range(args.world_size)]
+            #labels = torch.cat(labels, dim=1).to(args.rank)
+            #labels = - 2 * torch.eye(b).to(args.rank) + torch.ones(b,b).to(args.rank)
+#            labels = torch.arange(b, device = device)
+            labels = torch.arange(args.rank*b, (args.rank+1)*b).to(args.rank)
+            #print(f"rank: {args.rank} labels: {labels.shape}")
+            #print(f"rank: {args.rank} labels: {labels.data}")
+            #print(f"rank: {args.rank} labels.is_contiguous(): {labels.is_contiguous()}")
+            #print(f"rank: {args.rank} sim_text: {sim_text.data}")
+            #print(f"rank: {args.rank} sim_bioseq: {sim_bioseq.data}")
             #loss = (F.cross_entropy(sim_text, labels) + F.cross_entropy(sim_bioseq, labels)) / 2
-            loss = ((F.cosine_similarity(sim_text, labels) + F.cosine_similarity(sim_bioseq, labels)) / 2).mean() #.contiguous()
-            print(f"rank: {args.rank} loss: {loss.item()}")
-            # TO DO: Fix "RuntimeError: Tensors must be contiguous" error with loss.backward.
+            # Here we need then the cosine similarity:
+            #loss = -((F.cosine_similarity(sim_text, labels) + F.cosine_similarity(sim_bioseq, labels)) / 2).mean()
+            #loss = (labels * F.cosine_similarity(sim_text, labels)).mean()
+#            loss = (F.cross_entropy(sim, labels) + F.cross_entropy(sim.t(), labels)) / 2
+            loss = ((F.cross_entropy(sim_text, labels) + F.cross_entropy(sim_bioseq, labels)) / 2).mean()
+            #print(f"rank: {args.rank} loss: {loss.item()}")
+            #print(f"rank: {args.rank} loss.is_contiguous(): {loss.is_contiguous()}")
+#                writer.add_scalars("1 loss/1 step", {"train": loss.item()}, step)
+#
+#                dist.barrier()
+#                loss.backward()
+#                clip_grad_norm_(model.parameters(), 1.)
+#                optimizer.step()
+#
+#                if (step % args.save_interval_step == 0) and (step != 0):
+#                    path_save = os.path.join(args.path_model, f"{'_'.join(str(datetime.now()).split('.')[0].split(' '))}_step{step:08d}.pt")
+#                    torch.save(ddp_model.state_dict(), path_save)
 
             reduced_loss = reduce_tensor(loss.data, args.world_size)
             losses.update(reduced_loss.item())
@@ -372,7 +400,7 @@ def trainer(rank, world_size):
 
     dl_train = DataLoader(ds_train,
                           batch_size=args.bs,
-                          shuffle=True,
+                          shuffle=True if not(args.dryrun) else False,
                           num_workers=args.numw,
                           pin_memory=True)
     logger.info(f"{datetime.now()} rank: {args.rank} created dataloader with length {len(dl_train)}")
