@@ -20,7 +20,8 @@ class CLASP(nn.Module):
         bioseq,
         text_mask = None,
         bioseq_mask = None,
-        return_loss = False
+        return_loss = False,
+        return_latents_temp = False
     ):
         b, device = text.shape[0], text.device
 
@@ -31,10 +32,12 @@ class CLASP(nn.Module):
 
         temp = self.temperature.exp()
 
-        if not return_loss:
-#            sim = einsum('n d, n d -> n', text_latents, bioseq_latents) * temp
-#            return sim
+        if return_latents_temp:
             return text_latents, bioseq_latents, temp
+
+        if not return_loss:
+            sim = einsum('n d, n d -> n', text_latents, bioseq_latents) * temp
+            return sim
 
         sim = einsum('i d, j d -> i j', text_latents, bioseq_latents) * temp
         labels = torch.arange(b, device = device)

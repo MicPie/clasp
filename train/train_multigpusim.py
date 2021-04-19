@@ -209,7 +209,8 @@ def train_ddp(args, model, optimizer, dl_train, epochs, logger=None, writer=None
                 bioseq,
                 text_mask = text_mask,
                 bioseq_mask = bioseq_mask,
-                return_loss = False # set return loss to True
+                return_loss = False,
+                return_latents_temp = True
             )
 
             all_text_latents   = [torch.zeros_like(text_latents)   for _ in range(dist.get_world_size())]
