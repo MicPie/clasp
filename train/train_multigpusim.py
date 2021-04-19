@@ -212,36 +212,20 @@ def train_ddp(args, model, optimizer, dl_train, epochs, logger=None, writer=None
                 return_loss = False # set return loss to True
             )
 
-            print(f"rank: {args.rank} text_latents: ",text_latents.shape)
-            print(f"rank: {args.rank} bioseq_latents: ",bioseq_latents.shape)
-
             all_text_latents   = [torch.zeros_like(text_latents)   for _ in range(dist.get_world_size())]
             all_bioseq_latents = [torch.zeros_like(bioseq_latents) for _ in range(dist.get_world_size())]
             dist.all_gather(all_text_latents, text_latents)
             dist.all_gather(all_bioseq_latents, bioseq_latents)
 
-            print(f"rank: {args.rank} all_text_latents: ",len(all_text_latents))
-            print(f"rank: {args.rank} all_bioseq_latents: ",len(all_bioseq_latents))
-            print(f"rank: {args.rank} all_text_latents[0]: ",all_text_latents[0].shape, all_text_latents[0].device)
-            print(f"rank: {args.rank} all_text_latents[1]: ",all_text_latents[1].shape, all_text_latents[0].device)
-            print(f"rank: {args.rank} all_bioseq_latents[0]: ",all_bioseq_latents[0].shape, all_bioseq_latents[0].device)
-            print(f"rank: {args.rank} all_bioseq_latents[1]: ",all_bioseq_latents[1].shape, all_bioseq_latents[0].device)
-            print(f"rank: {args.rank} {torch.all(torch.eq(bioseq_latents, all_bioseq_latents[0]))}")
-            print(f"rank: {args.rank} {torch.all(torch.eq(bioseq_latents, all_bioseq_latents[1]))}")
-
             all_text_latents = torch.cat(all_text_latents, dim=0)
             all_bioseq_latents = torch.cat(all_bioseq_latents, dim=0)
-            print(f"rank: {args.rank} all_text_latents: ",all_text_latents.shape)
-            print(f"rank: {args.rank} all_bioseq_latents: ",all_bioseq_latents.shape)
 
             sim_text   = (einsum('i d, j d -> i j', text_latents, all_bioseq_latents) * temp)
             sim_bioseq = (einsum('i d, j d -> i j', bioseq_latents, all_text_latents) * temp)
-            print(f"rank: {args.rank} sim_text: {sim_text.shape}")
-            print(f"rank: {args.rank} sim_bioseq: {sim_bioseq.shape}")
+
             labels = torch.arange(args.rank*args.bs, (args.rank+1)*args.bs).to(args.rank)
-            print(f"rank: {args.rank} labels: {labels.shape}")
+            
             loss = ((F.cross_entropy(sim_text, labels) + F.cross_entropy(sim_bioseq, labels)) / 2).mean()
-            print(f"rank: {args.rank} loss: {loss.item()}")
 
             reduced_loss = reduce_tensor(loss.data, args.world_size)
             losses.update(reduced_loss.item())
