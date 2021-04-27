@@ -20,7 +20,8 @@ class CLASP(nn.Module):
         bioseq,
         text_mask = None,
         bioseq_mask = None,
-        return_loss = False
+        return_loss = False,
+        return_latents_temp = False
     ):
         b, device = text.shape[0], text.device
 
@@ -30,6 +31,9 @@ class CLASP(nn.Module):
         text_latents, bioseq_latents = map(lambda t: F.normalize(t, p = 2, dim = -1), (text_latents, bioseq_latents))
 
         temp = self.temperature.exp()
+
+        if return_latents_temp:
+            return text_latents, bioseq_latents, temp
 
         if not return_loss:
             sim = einsum('n d, n d -> n', text_latents, bioseq_latents) * temp
