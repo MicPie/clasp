@@ -133,3 +133,5 @@ archive
 *.py~
 *.swp
 *.un~
+results/
+eval/
