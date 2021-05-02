@@ -161,6 +161,10 @@ def reduce_tensor(tensor, n):
 
 def train_ddp(args, model, optimizer, dl_train, epochs, logger=None, writer=None):
 
+    # Based on: https://discuss.pytorch.org/t/extra-10gb-memory-on-gpu-0-in-ddp-tutorial/118113
+    torch.cuda.set_device(args.rank)
+    torch.cuda.empty_cache()
+
     step = 0
 
     logger.info(f"{datetime.now()} rank: {args.rank} world_size: {args.world_size}")
