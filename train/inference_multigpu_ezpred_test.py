@@ -93,6 +93,10 @@ def get_args():
     parser.add_argument("--save-interval-step", type=int, default=4_000,
                         help="save interval step (default: 4_000")
 
+    # inference
+    parser.add_argument("--inf-rank", type=int, default=0,
+                        help="inference rank (default: 0")
+
     args = parser.parse_args()
     args.cmd = " ".join("\""+arg+"\"" if " " in arg else arg for arg in sys.argv)
     return args
@@ -153,7 +157,7 @@ def inferer(rank, world_size):
     args.rank = rank
     args.world_size = world_size
     
-    if args.rank == 1:
+    if args.rank == args.inf_rank:
         print(f"{datetime.now()} rank: {args.rank} torch version: {torch.__version__}")
         # model setup
         text_enc = Transformer(
@@ -180,17 +184,18 @@ def inferer(rank, world_size):
 
     #if args.rank == 0:
         if args.path_weights:
-            # TO DO: Check if this setup is really needed due to ddp.
-            print(f"{datetime.now()} rank: {args.rank} path weights: {args.path_weights}")
-            ckpt = torch.load(args.path_weights, map_location="cpu")
-            new_ckpt = OrderedDict() 
-            for k, v in ckpt.items():
-                name = k[7:] # remove "module."
-                new_ckpt[name] = v
-            print(f"{datetime.now()} rank: {args.rank} reloaded checkpoint weights keys count {len(model.state_dict().keys())}")
-            print(f"{datetime.now()} rank: {args.rank} processed checkpoint weights keys count {len(new_ckpt.keys())}")
-            model.load_state_dict(new_ckpt)
-            print(f"{datetime.now()} rank: {args.rank} reloaded model weights from {args.path_weights}")
+            if not(args.path_weights.startswith("randinit")):
+                # TO DO: Check if this setup is really needed due to ddp.
+                print(f"{datetime.now()} rank: {args.rank} path weights: {args.path_weights}")
+                ckpt = torch.load(args.path_weights, map_location="cpu")
+                new_ckpt = OrderedDict() 
+                for k, v in ckpt.items():
+                    name = k[7:] # remove "module."
+                    new_ckpt[name] = v
+                print(f"{datetime.now()} rank: {args.rank} reloaded checkpoint weights keys count {len(model.state_dict().keys())}")
+                print(f"{datetime.now()} rank: {args.rank} processed checkpoint weights keys count {len(new_ckpt.keys())}")
+                model.load_state_dict(new_ckpt)
+                print(f"{datetime.now()} rank: {args.rank} reloaded model weights from {args.path_weights}")
 
         model.eval()
         set_requires_grad(model, option=False)
@@ -214,24 +219,24 @@ def inferer(rank, world_size):
         bioseq_outputs = []
         labels = []
         len_dl = len(dl)
-#        for i, b in enumerate(dl):
-#            print(f"batch {i}/{len_dl}")
-#            bioseq, bioseq_mask, label = b
-#            bioseq = bioseq.to(args.rank)
-#            bioseq_mask = bioseq_mask.to(args.rank)
-#            bioseq_out = model.bioseq_encoder(bioseq, mask=bioseq_mask)
-#            bioseq_outputs.append(bioseq_out.detach().cpu().clone()) 
-#            labels.append(label.detach().cpu().clone())
-#            #if i == 2:
-#            #    break
-#        print(f"{datetime.now()} rank: {args.rank} inference carried out in {time.time() - tp:.3f} s")
-#
-#        bioseq_outputs = torch.cat(bioseq_outputs)
-#        labels = torch.cat(labels)
-#
+        for i, b in enumerate(dl):
+            #print(f"batch {i+1}/{len_dl}")
+            bioseq, bioseq_mask, label = b
+            bioseq = bioseq.to(args.rank)
+            bioseq_mask = bioseq_mask.to(args.rank)
+            bioseq_out = model.bioseq_encoder(bioseq, mask=bioseq_mask)
+            bioseq_outputs.append(bioseq_out.detach().cpu().clone()) 
+            labels.append(label.detach().cpu().clone())
+            #if i == 10:
+            #    break
+        print(f"{datetime.now()} rank: {args.rank} inference carried out in {time.time() - tp:.3f} s")
+
+        bioseq_outputs = torch.cat(bioseq_outputs)
+        labels = torch.cat(labels)
+
         file_out_base = args.path_weights.split(".pt")[0].replace("/","_")
-#        np.save(f"{file_out_base}_bioseq_outputs.npy", bioseq_outputs.numpy())
-#        np.save(f"{file_out_base}_labels.npy", labels.numpy())
+        np.save(f"{file_out_base}_bioseq_outputs.npy", bioseq_outputs.numpy())
+        np.save(f"{file_out_base}_labels.npy", labels.numpy())
 
         #text, text_mask = text_tok(text_orig)
         #text = text.to(args.rank)
@@ -239,18 +244,13 @@ def inferer(rank, world_size):
         #text_out = model.text_encoder(text, mask=text_mask)
 
         # EC classes descriptions from: https://en.wikipedia.org/wiki/Enzyme_Commission_number#Top_level_codes
-        text_orig = ["EC class for enzyme for catalysing a reaction",
-                     "enzymatic reaction for substrates",
+        text_orig = [
                      "oxidoreductase to catalyze oxidation/reduction reactions; transfer of h and o atoms or electrons from one substance to another",
                      "transferase transfer of a functional group from one substance to another. the group may be methyl-, acyl-, amino- or phosphate group",
                      "hydrolass formation of two products from a substrate by hydrolysis",
                      "lyase non-hydrolytic addition or removal of groups from substrates. c-c, c-n, c-o or c-s bonds may be cleaved",
                      "isomerase intramolecule rearrangement, i.e. isomerization changes within a single molecule",
                      "ligase join together two molecules by synthesis of new c-o, c-s, c-n or c-c bonds with simultaneous breakdown of atp",
-                     "not involved in reactions",
-                     "non-enzymatic activity",
-                     "normal protein",
-                     "antigen processing",
                      ]
         text_ = [text_tok(text_sampler(t)) for t in text_orig]
         text, text_mask = list(zip(*text_))
@@ -261,13 +261,20 @@ def inferer(rank, world_size):
 
         np.save(f"{file_out_base}_text_out.npy", text_out.detach().cpu().numpy())
 
-#        text_out_norm = F.normalize(text_out, p=2, dim =-1)
-#        bioseq_out_norm = F.normalize(bioseq_out, p=2, dim =-1)
-#
-#        sim = einsum('n d, 1 d -> n', text_out_norm, bioseq_out_norm)
-#        print(f"{datetime.now()} rank: {args.rank} similarities for text query: '{text_orig}':")
-#        for s in sim.tolist():
-#            print(f"{s:>20.6f}")
+        text_out_norm = F.normalize(text_out, p=2, dim =-1).cpu()
+        bioseq_out_norm = F.normalize(bioseq_outputs, p=2, dim =-1).cpu()
+
+        sim = einsum('n d, m d -> n m', bioseq_out_norm, text_out_norm)
+
+        df_ecpred = pd.read_pickle(path_ecpred)
+        df_ecpred["label"] = df_ecpred.ec.apply(lambda x: str(x)[2:3])
+        class_labels = df_ecpred[df_ecpred.label != ""].drop_duplicates(subset=['sequence']).label.apply(lambda x: int(x)).tolist()
+        #print("len(class_labels):",len(class_labels))
+        class_idx = (df_ecpred.drop_duplicates(subset=['sequence']).label != "").tolist()
+        acc = (sim[class_idx].argmax(dim=-1)+1 == torch.tensor(class_labels)).float().mean().item()
+        print(f"Accuracy: {acc:.6f}")
+        with open(f"{args.path_weights.split('/')[1]}_ecpred.txt", "a") as f:
+            f.write(f"{file_out_base},{acc}\n")
 
 
 if __name__ == "__main__":
