@@ -20,7 +20,7 @@ from collections import OrderedDict
 
 from torch.nn.utils import clip_grad_norm_
 
-from clasp import CLASP, Transformer, tokenize, basic_rand_sampler, basic_aa_tokenizer, CLASPDataset
+from clasp import CLASP, Transformer, tokenize, basic_sampler, basic_rand_sampler, basic_aa_tokenizer, CLASPDataset
 
 import numpy as np
 import pandas as pd
@@ -201,10 +201,10 @@ def inferer(rank, world_size):
         set_requires_grad(model, option=False)
         print(f"{datetime.now()} rank: {args.rank} model set to eval mode and set requires grad for all parameters to false")
 
-        text_sampler = partial(basic_rand_sampler, sample_len=1024)
+        text_sampler = partial(basic_sampler, sample_len=1024)
         text_tok = partial(tokenize, context_length=1024, return_mask=True)
 
-        bioseq_sampler = partial(basic_rand_sampler, sample_len=512)
+        bioseq_sampler = partial(basic_sampler, sample_len=512)
         bioseq_tok = partial(basic_aa_tokenizer, context_length=512, return_mask=True)
         print(f"{datetime.now()} rank: {args.rank} samplers and tokenizer setup")
 
