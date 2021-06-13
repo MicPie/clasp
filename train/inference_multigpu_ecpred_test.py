@@ -265,7 +265,7 @@ def inferer(rank, world_size):
         text_out_norm = F.normalize(text_out, p=2, dim =-1).cpu()
         bioseq_out_norm = F.normalize(bioseq_outputs, p=2, dim =-1).cpu()
 
-        sim = einsum('n d, m d -> n m', bioseq_out_norm, text_out_norm)
+        sim = einsum('n d, m d -> n m', bioseq_out_norm, text_out_norm) * model.temperature.exp()
 
         df_ecpred = pd.read_pickle(path_ecpred)
         df_ecpred["label"] = df_ecpred.ec.apply(lambda x: str(x)[2:3])
@@ -275,7 +275,8 @@ def inferer(rank, world_size):
         acc = (sim[class_idx].argmax(dim=-1)+1 == torch.tensor(class_labels)).float().mean().item()
         print(f"Accuracy: {acc:.6f}")
         with open(f"{args.path_weights.split('/')[1]}_ecpred.txt", "a") as f:
-            f.write(f"{file_out_base},{acc}\n")
+            f.write(f"{file_out_base},{acc}")
+            f.write("\n")
 
 
 if __name__ == "__main__":

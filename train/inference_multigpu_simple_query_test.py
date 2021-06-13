@@ -224,7 +224,7 @@ def inferer(rank, world_size):
         text_out_norm = F.normalize(text_out, p=2, dim =-1)
         bioseq_out_norm = F.normalize(bioseq_out, p=2, dim =-1)
 
-        sim = einsum('n d, n d -> n', text_out_norm, bioseq_out_norm)
+        sim = einsum('n d, n d -> n', text_out_norm, bioseq_out_norm) * model.temperature.exp()
         print(f"{datetime.now()} rank: {args.rank} similarities for text query: '{text_orig}':")
         for s in sim.tolist():
             print(f"{s:>20.6f}")
