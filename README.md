@@ -2,6 +2,8 @@
 
 Repository for creating models pretrained on language and aminoacid sequences similar to [ConVIRT](https://arxiv.org/abs/2010.00747), [CLIP](https://openai.com/blog/clip/), and [ALIGN](https://arxiv.org/abs/2102.05918).
 
+This project is supported by [EleutherAI](https://www.eleuther.ai/).
+
 ## Updates
 
 Training behaviour from latest test run:
