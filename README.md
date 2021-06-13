@@ -5,7 +5,7 @@ Repository for creating models pretrained on language and aminoacid sequences si
 ## Updates
 
 Training behaviour from latest test run:
-<p align="center"><img src="https://github.com/MicPie/clasp/tree/main/img/CLASP_testrun.png"></p>
+<p align="center"><img src="https://github.com/MicPie/clasp/blob/main/img/CLASP_testrun.png"></p>
 
 *Work in progress - more updates soon!*
 
