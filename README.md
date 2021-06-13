@@ -2,7 +2,6 @@
 
 Repository for creating models pretrained on language and aminoacid sequences similar to [ConVIRT](https://arxiv.org/abs/2010.00747), [CLIP](https://openai.com/blog/clip/), and [ALIGN](https://arxiv.org/abs/2102.05918).
 
-This project is supported by [EleutherAI](https://www.eleuther.ai/).
 
 ## Updates
 
@@ -11,9 +10,11 @@ Training behaviour from latest test run:
 
 *Work in progress - more updates soon!*
 
+
 ## Data
 
 For model training the data provided by [UniProt](https://www.uniprot.org/) is used.
+
 
 ## Requirements
 
@@ -36,6 +37,7 @@ $ pip install triton
 ```
 
 If both of the above succeeded, now you can train your long biosequences with `CLASP`
+
 
 ## Usage
 
@@ -105,9 +107,16 @@ scores = clasp(
 )
 
 ```
+
+
 ## Resources
 
 See [interesting resources](https://github.com/MicPie/clasp/blob/main/resources.md) (feel free to add interesting material that could be useful).
+
+
+## Acknowledgements
+
+This project is supported by [EleutherAI](https://www.eleuther.ai/).
 
 
 ## Citations
