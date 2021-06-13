@@ -28,10 +28,12 @@ def bytes_to_unicode():
     return dict(zip(bs, cs))
 
 def get_pairs(word):
-    if len(word) > 1:
-        return set(zip(word[:-1], word[1:]))
-    else:
-        return set()
+    pairs = set()
+    prev_char = word[0]
+    for char in word[1:]:
+        pairs.add((prev_char, char))
+        prev_char = char
+    return pairs
 
 def basic_clean(text):
     text = ftfy.fix_text(text)
@@ -94,6 +96,7 @@ class SimpleTokenizer(object):
                 else:
                     new_word.append(word[i])
                     i += 1
+            new_word = tuple(new_word)
             word = new_word
             if len(word) == 1:
                 break
@@ -131,13 +134,12 @@ def tokenize(texts, context_length = 256, add_start = False, add_end = False, tr
     result = torch.zeros(len(all_tokens), context_length, dtype=torch.long)
 
     for i, tokens in enumerate(all_tokens):
-        tokens = torch.tensor(tokens)
-        if tokens.shape[0] > context_length:
+        if len(tokens) > context_length:
             if truncate_text:
                 tokens = tokens[:context_length]
             else:
                 raise RuntimeError(f"Input {texts[i]} is too long for context length {context_length}")
-        result[i, :tokens.shape[0]] = tokens
+        result[i, :len(tokens)] = torch.tensor(tokens)
 
     if return_mask:
         return result, result != 0
