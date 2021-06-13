@@ -2,6 +2,11 @@
 
 Repository for creating models pretrained on language and aminoacid sequences similar to [ConVIRT](https://arxiv.org/abs/2010.00747), [CLIP](https://openai.com/blog/clip/), and [ALIGN](https://arxiv.org/abs/2102.05918).
 
+## Updates
+
+Training behaviour from latest test run:
+<p align="center"><img src="https://github.com/MicPie/clasp/tree/main/img/CLASP_testrun.png"></p>
+
 *Work in progress - more updates soon!*
 
 ## Data
