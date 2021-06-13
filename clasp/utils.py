@@ -44,7 +44,7 @@ def basic_aa_tokenizer(seq, context_length, return_mask=True):
     """
     seq_len = len(seq)
     seq_wrap = torch.zeros(context_length, dtype=torch.long) 
-    seq_wrap[:seq_len] = torch.tensor([d[a] if a in AA_VOCAB else 22 for a in seq], dtype=torch.long)
+    seq_wrap[:seq_len] = torch.tensor([AA_DICT[a] if a in AA_VOCAB else 22 for a in seq], dtype=torch.long)
     if return_mask:
         mask = torch.zeros_like(seq_wrap, dtype=torch.bool)
         mask[0:seq_len] = True
