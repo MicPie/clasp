@@ -36,10 +36,22 @@ def get_args():
     # data
     parser.add_argument("--id", type=str,
                         help="run id")
-    parser.add_argument("--path-data", type=str,
+
+    parser.add_argument("--path-data-train", type=str,
                         help="path preprocessed csv file for training")
-    parser.add_argument("--path-offsd", type=str,
+    parser.add_argument("--path-offsd-train", type=str,
                         help="path preprocessed offset dictionary json file for training")
+
+    parser.add_argument("--path-data-valid-id", type=str,
+                        help="path preprocessed csv file for valid id")
+    parser.add_argument("--path-offsd-valid-id", type=str,
+                        help="path preprocessed offset dictionary json file for valid id")
+
+    parser.add_argument("--path-data-valid-ood", type=str,
+                        help="path preprocessed csv file for valid ood")
+    parser.add_argument("--path-offsd-valid-ood", type=str,
+                        help="path preprocessed offset dictionary json file for valid ood")
+
     parser.add_argument("--path-results", type=str, default="results",
                         help="path to the results data, i.e., logs, model weights, etc. (default: results)")
     parser.add_argument("--path-weights", type=str, default=None,
@@ -397,7 +409,7 @@ def trainer(rank, world_size):
         offset_dict = json.load(offsd)
     logger.info(f"{datetime.now()} rank: {args.rank} loaded offset dict")
 
-    ds_train = CLASPRankSplitDataset(file_path=args.path_data,
+    ds_train = CLASPRankSplitDataset(file_path=args.path_data_train,
                            offset_dict=offset_dict,
                            rank=args.rank,
                            world_size=args.world_size,
@@ -406,14 +418,50 @@ def trainer(rank, world_size):
                            bioseq_sampler=bioseq_sampler,
                            text_tok=text_tok,
                            bioseq_tok=bioseq_tok)
-    logger.info(f"{datetime.now()} rank: {args.rank} created dataset")
+    logger.info(f"{datetime.now()} rank: {args.rank} created train dataset")
 
     dl_train = DataLoader(ds_train,
                           batch_size=args.bs,
                           shuffle=True if not(args.dryrun) else False,
                           num_workers=args.numw,
                           pin_memory=True)
-    logger.info(f"{datetime.now()} rank: {args.rank} created dataloader with length {len(dl_train)}")
+    logger.info(f"{datetime.now()} rank: {args.rank} created train dataloader with length {len(dl_train)}")
+
+    ds_valid_id = CLASPRankSplitDataset(file_path=args.path_data_valid_id,
+                           offset_dict=offset_dict,
+                           rank=args.rank,
+                           world_size=args.world_size,
+                           logger=logger,
+                           text_sampler=text_sampler,
+                           bioseq_sampler=bioseq_sampler,
+                           text_tok=text_tok,
+                           bioseq_tok=bioseq_tok)
+    logger.info(f"{datetime.now()} rank: {args.rank} created valid id dataset")
+
+    dl_valid_id = DataLoader(ds_valid_id,
+                          batch_size=args.bs,
+                          shuffle=False,
+                          num_workers=args.numw,
+                          pin_memory=True)
+    logger.info(f"{datetime.now()} rank: {args.rank} created valid id dataloader with length {len(dl_valid_id)}")
+
+    ds_valid_ood = CLASPRankSplitDataset(file_path=args.path_data_valid_ood,
+                           offset_dict=offset_dict,
+                           rank=args.rank,
+                           world_size=args.world_size,
+                           logger=logger,
+                           text_sampler=text_sampler,
+                           bioseq_sampler=bioseq_sampler,
+                           text_tok=text_tok,
+                           bioseq_tok=bioseq_tok)
+    logger.info(f"{datetime.now()} rank: {args.rank} created valid ood dataset")
+
+    dl_valid_ood = DataLoader(ds_valid_ood,
+                          batch_size=args.bs,
+                          shuffle=False,
+                          num_workers=args.numw,
+                          pin_memory=True)
+    logger.info(f"{datetime.now()} rank: {args.rank} created train dataloader with length {len(dl_train)}")
 
     # model setup
     text_enc = Transformer(
