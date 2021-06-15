@@ -118,9 +118,8 @@ def create_logger(path_log, file_name):
 
 def setup(rank, world_size):
     os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '12355'
+    os.environ['MASTER_PORT'] = '12345'
     dist.init_process_group("gloo", rank=rank, world_size=world_size)
-    #dist.init_process_group("nccl", rank=rank, world_size=world_size)
 
 
 def cleanup():
@@ -159,7 +158,7 @@ def reduce_tensor(tensor, n):
 #        logger.info(f"{datetime.now()} {output}")
 
 
-def train_ddp(args, model, optimizer, dl_train, epochs, logger=None, writer=None):
+def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epochs, logger=None, writer=None):
 
     # Based on: https://discuss.pytorch.org/t/extra-10gb-memory-on-gpu-0-in-ddp-tutorial/118113
     torch.cuda.set_device(args.rank)
@@ -175,20 +174,71 @@ def train_ddp(args, model, optimizer, dl_train, epochs, logger=None, writer=None
     ddp_model = DDP(model, device_ids=[args.rank])
     logger.info(f"{datetime.now()} rank: {args.rank} created ddp model")
 
-    def one_epoch(args, model, optimizer, dl, epoch, step, train=True):
+    def validate(model, dl, step, logid="id"):
+        losses     = AverageMeter()
+        accuracies = AverageMeter()
+
+        model.eval()
+
+        with torch.no_grad():
+            for j, b in enumerate(dl):
+            text, text_mask, bioseq, bioseq_mask = b
+
+            text        = text.to(args.rank).squeeze(1)
+            text_mask   = text_mask.to(args.rank).squeeze(1)
+            bioseq      = bioseq.to(args.rank)
+            bioseq_mask = bioseq_mask.to(args.rank)
+
+            text_latents, bioseq_latents, temp = model(
+                text,
+                bioseq,
+                text_mask = text_mask,
+                bioseq_mask = bioseq_mask,
+                return_loss = False,
+                return_latents_temp = True
+            )
+
+            all_text_latents   = [torch.zeros_like(text_latents)   for _ in range(dist.get_world_size())]
+            all_bioseq_latents = [torch.zeros_like(bioseq_latents) for _ in range(dist.get_world_size())]
+            dist.all_gather(all_text_latents, text_latents)
+            dist.all_gather(all_bioseq_latents, bioseq_latents)
+
+            all_text_latents   = torch.cat(all_text_latents, dim=0)
+            all_bioseq_latents = torch.cat(all_bioseq_latents, dim=0)
+
+            sim_text   = (einsum('i d, j d -> i j', text_latents, all_bioseq_latents) * temp)
+            sim_bioseq = (einsum('i d, j d -> i j', bioseq_latents, all_text_latents) * temp)
+
+            labels = torch.arange(args.rank*args.bs, (args.rank+1)*args.bs).to(args.rank)
+
+            loss = ((F.cross_entropy(sim_text, labels) + F.cross_entropy(sim_bioseq, labels)) / 2).mean()
+
+            acc_text   = ((sim_text.argmax(0) == labels.argmax(0)).float()).mean()
+            acc_bioseq = ((sim_bioseq.argmax(0) == labels.argmax(0)).float()).mean()
+            acc        = (acc_text + acc_bioseq).mean()
+
+            reduced_loss = reduce_tensor(loss.data, args.world_size)
+            losses.update(reduced_loss.item())
+
+            reduced_acc = reduce_tensor(acc.data, args.world_size)
+            accuracies.update(reduced_acc.item())
+
+            if args.rank == 0:
+                writer.add_scalars("1 loss/1 step", {f"valid {logid}": reduced_loss.item()}, step)
+                writer.add_scalars("2 accuracy/1 step", {f"valid {logid}": reduced_acc.item()}, step)
+
+    def one_epoch(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch, step):
         time_epoch_start = time.time()
 
         batch_time = AverageMeter()
         data_time = AverageMeter()
         losses = AverageMeter()
+        accuracies = AverageMeter()
 
-        if train:
-            model.train()
-        else:
-            model.eval()
+        model.train()
 
         tp = time.time()
-        for i, b in enumerate(dl):
+        for i, b in enumerate(dl_train):
 
             if args.dryrun:
                 if i == 4:
@@ -222,39 +272,52 @@ def train_ddp(args, model, optimizer, dl_train, epochs, logger=None, writer=None
             dist.all_gather(all_text_latents, text_latents)
             dist.all_gather(all_bioseq_latents, bioseq_latents)
 
-            all_text_latents = torch.cat(all_text_latents, dim=0)
+            all_text_latents   = torch.cat(all_text_latents, dim=0)
             all_bioseq_latents = torch.cat(all_bioseq_latents, dim=0)
 
             sim_text   = (einsum('i d, j d -> i j', text_latents, all_bioseq_latents) * temp)
             sim_bioseq = (einsum('i d, j d -> i j', bioseq_latents, all_text_latents) * temp)
 
+            model.temperature.data.clamp_(-torch.log(torch.tensor(100.)), torch.log(torch.tensor(100.)))
+
             labels = torch.arange(args.rank*args.bs, (args.rank+1)*args.bs).to(args.rank)
-            
+
             loss = ((F.cross_entropy(sim_text, labels) + F.cross_entropy(sim_bioseq, labels)) / 2).mean()
+
+            loss.backward()
+            clip_grad_norm_(model.parameters(), 1.)
+            optimizer.step()
+
+            acc_text   = ((sim_text.argmax(0) == labels.argmax(0)).float()).mean()
+            acc_bioseq = ((sim_bioseq.argmax(0) == labels.argmax(0)).float()).mean()
+            acc        = (acc_text + acc_bioseq).mean()
 
             reduced_loss = reduce_tensor(loss.data, args.world_size)
             losses.update(reduced_loss.item())
+
+            reduced_acc = reduce_tensor(acc.data, args.world_size)
+            accuracies.update(reduced_acc.item())
+
             if args.rank == 0:
                 writer.add_scalars("1 loss/1 step", {"train": reduced_loss.item()}, step)
+                writer.add_scalars("2 accuracy/1 step", {"train": reduced_acc.item()}, step)
 
-            if train:
-                loss.backward()
-                clip_grad_norm_(model.parameters(), 1.)
-                optimizer.step()
-
-            if args.rank == 0:
-                if (step % args.save_interval_step == 0) and (step != 0):
+            if (step % args.save_interval_step == 0) and (step != 0):
+                if args.rank == 0:
                     path_save = os.path.join(args.path_model, f"{'_'.join(str(datetime.now()).split('.')[0].split(' '))}_step{step:08d}.pt")
                     torch.save(ddp_model.state_dict(), path_save)
+
+                validate(model, dl_valid_id, step, logid="id")
+                validate(model, dl_valid_ood, step, logid="ood")
 
             bt = time.time() - tp
             bt = torch.tensor(bt).to(args.rank)
             bt = reduce_tensor(bt, args.world_size)
             batch_time.update(bt)
             if args.rank == 0:
-                writer.add_scalars("2 timings/1 step", {"dt": dt, "bt": bt}, step)
+                writer.add_scalars("3 timings/1 step", {"dt": dt, "bt": bt}, step)
                 if (step % args.save_interval_step == 0) and (step != 0):
-                    logger.info(f"{datetime.now()} epoch: {epoch:>4} step: {step:>8} bt: {batch_time.avg:<10.3f}dt: {data_time.avg:<10.3f}{'train' if train else 'valid'} loss: {losses.avg:<10.3f}")
+                    logger.info(f"{datetime.now()} epoch: {epoch:>4} step: {step:>8} bt: {batch_time.avg:<10.3f}dt: {data_time.avg:<10.3f}{'train' if train else 'valid'} loss: {losses.avg:<10.3f} acc: {accuracies.avg:<10.3f}")
                 step += 1
 
             tp = time.time()
@@ -270,16 +333,17 @@ def train_ddp(args, model, optimizer, dl_train, epochs, logger=None, writer=None
         epoch_time = reduce_tensor(et, args.world_size)
 
         if args.rank == 0:
-            logger.info(f"{datetime.now()} epoch: {epoch:>4} et: {epoch_time:<11.3f}bt: {batch_time.avg:<10.3f}dt: {data_time.avg:<10.3f}{'train' if train else 'valid'} loss: {losses.avg:<10.3f}")
+            logger.info(f"{datetime.now()} epoch: {epoch:>4} et: {epoch_time:<11.3f}bt: {batch_time.avg:<10.3f}dt: {data_time.avg:<10.3f}{'train' if train else 'valid'} loss: {losses.avg:<10.3f} acc: {accuracies.avg:<10.3f}")
             writer.add_scalars("1 loss/2 epoch", {"train": losses.avg}, epoch)
-            writer.add_scalars("2 timings/2 step", {"dt": data_time.avg, "bt": batch_time.avg}, epoch)
-            writer.add_scalars("2 timings/3 epoch", {"et": epoch_time}, epoch)
+            writer.add_scalars("2 accuracy/2 epoch", {"train": accuracies.avg}, epoch)
+            writer.add_scalars("3 timings/2 step", {"dt": data_time.avg, "bt": batch_time.avg}, epoch)
+            writer.add_scalars("3 timings/3 epoch", {"et": epoch_time}, epoch)
 
         return model, optimizer, step
 
     logger.info(f"{datetime.now()} rank: {args.rank} start training")
     for epoch in range(args.epochs):
-        ddp_model, optimizer, step = one_epoch(args, ddp_model, optimizer, dl_train, epoch, step=step, train=True)
+        ddp_model, optimizer, step = one_epoch(args, ddp_model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch, step=step, train=True)
 
     cleanup()
     #logger.info(f"{datetime.now()} rank: {args.rank} ddp cleanup")
@@ -392,9 +456,13 @@ def trainer(rank, world_size):
 
     # training
     if args.rank == 0:
-        train_ddp(args, model=model, optimizer=opt, dl_train=dl_train, epochs=args.epochs, logger=logger, writer=writer)
+        train_ddp(args, model=model, optimizer=opt,
+                dl_train=dl_train, dl_valid_id=dl_valid_id, dl_valid_ood=dl_valid_ood, 
+                epochs=args.epochs, logger=logger, writer=writer)
     else:
-        train_ddp(args, model=model, optimizer=opt, dl_train=dl_train, epochs=args.epochs, logger=logger)
+        train_ddp(args, model=model, optimizer=opt,
+                dl_train=dl_train, dl_valid_id=dl_valid_id, dl_valid_ood=dl_valid_ood, 
+                epochs=args.epochs, logger=logger)
     logger.info(f"{datetime.now()} rank: {args.rank} training finished")
 
 
