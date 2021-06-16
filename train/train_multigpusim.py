@@ -454,7 +454,7 @@ def trainer(rank, world_size):
     logger.info(f"{datetime.now()} rank: {args.rank} created valid id dataloader with length {len(dl_valid_id)}")
 
     ds_valid_ood = CLASPRankSplitDataset(file_path=args.path_data_valid_ood,
-                           offset_dict=offset_dict_valid_od,
+                           offset_dict=offset_dict_valid_ood,
                            rank=args.rank,
                            world_size=args.world_size,
                            logger=logger,
