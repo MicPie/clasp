@@ -186,7 +186,7 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
     ddp_model = DDP(model, device_ids=[args.rank])
     logger.info(f"{datetime.now()} rank: {args.rank} created ddp model")
 
-    def validate(args, model, dl, step, logid="id"):
+    def validate(args, model, dl, step, logid):
         losses     = AverageMeter()
         accuracies = AverageMeter()
 
@@ -236,9 +236,9 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
                 accuracies.update(reduced_acc.item())
 
                 if args.rank == 0:
-                    logger.info(f"{datetime.now()} epoch: {epoch:>4} step: {step:>8} bt: {batch_time.avg:<10.3f}dt: {data_time.avg:<10.3f}{'train' if train else 'valid'} loss valid {logid}: {losses.avg:<10.3f} acc valid {logid}: {accuracies.avg:<10.3f}")
-                    writer.add_scalars("1 loss/1 step", {f"valid {logid}": reduced_loss.item()}, step)
-                    writer.add_scalars("2 accuracy/1 step", {f"valid {logid}": reduced_acc.item()}, step)
+                    logger.info(f"{datetime.now()} epoch: {epoch:>4} step: {step:>8}                              {logid} loss: {losses.avg:<10.3f} acc valid {logid}: {accuracies.avg:<10.3f}")
+                    writer.add_scalars("1 loss/1 step", {f"{logid.strip()}": reduced_loss.item()}, step)
+                    writer.add_scalars("2 accuracy/1 step", {f"{logid.strip()}": reduced_acc.item()}, step)
 
 
     def one_epoch(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch, step):
@@ -321,8 +321,8 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
                     path_save = os.path.join(args.path_model, f"{'_'.join(str(datetime.now()).split('.')[0].split(' '))}_step{step:08d}.pt")
                     torch.save(ddp_model.state_dict(), path_save)
 
-                validate(args, model, dl_valid_id, step, logid="id")
-                validate(args, model, dl_valid_ood, step, logid="ood")
+                validate(args, model, dl_valid_id, step, logid="valid id ")
+                validate(args, model, dl_valid_ood, step, logid="valid ood")
 
             bt = time.time() - tp
             bt = torch.tensor(bt).to(args.rank)
@@ -332,7 +332,7 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
             if args.rank == 0:
                 writer.add_scalars("3 timings/1 step", {"dt": dt, "bt": bt}, step)
                 if (step % args.save_interval_step == 0) and (step != 0):
-                    logger.info(f"{datetime.now()} epoch: {epoch:>4} step: {step:>8} bt: {batch_time.avg:<10.3f}dt: {data_time.avg:<10.3f}{'train' if train else 'valid'} loss: {losses.avg:<10.3f} acc: {accuracies.avg:<10.3f}")
+                    logger.info(f"{datetime.now()} epoch: {epoch:>4} step: {step:>8} bt: {batch_time.avg:<10.3f}dt: {data_time.avg:<10.3f}train     loss: {losses.avg:<10.3f} acc: {accuracies.avg:<10.3f}")
 
             step += 1
 
