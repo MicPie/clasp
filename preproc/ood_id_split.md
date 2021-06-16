@@ -31,12 +31,7 @@ grep -f progen_ood_families_uniprot_acc.csv uniprot_full_wo-valid-ood.csv | wc -
 ```
 should return 0
 
-Get 0.5% subsample of the csv data file for id valid data file (https://stackoverflow.com/questions/19770404/random-split-files-with-specific-proportion):
-If needed install `gawk`:
-```
-sudo apt-get install gawk`
-```
-to run
+Get 0.5% subsample of the csv data file for id valid data file (https://stackoverflow.com/questions/19770404/random-split-files-with-specific-proportion, if needed install `gawk` with `sudo apt-get install gawk`):
 ```
 gawk 'BEGIN {srand()} {f = FILENAME (rand() <= 0.995 ? ".995" : ".005"); print > f}' uniprot_full_wo-valid-ood.csv
 mv uniprot_full_wo-valid-ood.csv.995 uniprot_full_wo-valid-ood-id.csv
