@@ -194,50 +194,50 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
 
         with torch.no_grad():
             for j, b in enumerate(dl):
-            text, text_mask, bioseq, bioseq_mask = b
+                text, text_mask, bioseq, bioseq_mask = b
 
-            text        = text.to(args.rank).squeeze(1)
-            text_mask   = text_mask.to(args.rank).squeeze(1)
-            bioseq      = bioseq.to(args.rank)
-            bioseq_mask = bioseq_mask.to(args.rank)
+                text        = text.to(args.rank).squeeze(1)
+                text_mask   = text_mask.to(args.rank).squeeze(1)
+                bioseq      = bioseq.to(args.rank)
+                bioseq_mask = bioseq_mask.to(args.rank)
 
-            text_latents, bioseq_latents, temp = model(
-                text,
-                bioseq,
-                text_mask = text_mask,
-                bioseq_mask = bioseq_mask,
-                return_loss = False,
-                return_latents_temp = True
-            )
+                text_latents, bioseq_latents, temp = model(
+                    text,
+                    bioseq,
+                    text_mask = text_mask,
+                    bioseq_mask = bioseq_mask,
+                    return_loss = False,
+                    return_latents_temp = True
+                )
 
-            all_text_latents   = [torch.zeros_like(text_latents)   for _ in range(dist.get_world_size())]
-            all_bioseq_latents = [torch.zeros_like(bioseq_latents) for _ in range(dist.get_world_size())]
-            dist.all_gather(all_text_latents, text_latents)
-            dist.all_gather(all_bioseq_latents, bioseq_latents)
+                all_text_latents   = [torch.zeros_like(text_latents)   for _ in range(dist.get_world_size())]
+                all_bioseq_latents = [torch.zeros_like(bioseq_latents) for _ in range(dist.get_world_size())]
+                dist.all_gather(all_text_latents, text_latents)
+                dist.all_gather(all_bioseq_latents, bioseq_latents)
 
-            all_text_latents   = torch.cat(all_text_latents, dim=0)
-            all_bioseq_latents = torch.cat(all_bioseq_latents, dim=0)
+                all_text_latents   = torch.cat(all_text_latents, dim=0)
+                all_bioseq_latents = torch.cat(all_bioseq_latents, dim=0)
 
-            sim_text   = (einsum('i d, j d -> i j', text_latents, all_bioseq_latents) * temp)
-            sim_bioseq = (einsum('i d, j d -> i j', bioseq_latents, all_text_latents) * temp)
+                sim_text   = (einsum('i d, j d -> i j', text_latents, all_bioseq_latents) * temp)
+                sim_bioseq = (einsum('i d, j d -> i j', bioseq_latents, all_text_latents) * temp)
 
-            labels = torch.arange(args.rank*args.bs, (args.rank+1)*args.bs).to(args.rank)
+                labels = torch.arange(args.rank*args.bs, (args.rank+1)*args.bs).to(args.rank)
 
-            loss = ((F.cross_entropy(sim_text, labels) + F.cross_entropy(sim_bioseq, labels)) / 2).mean()
+                loss = ((F.cross_entropy(sim_text, labels) + F.cross_entropy(sim_bioseq, labels)) / 2).mean()
 
-            acc_text   = ((sim_text.argmax(0) == labels.argmax(0)).float()).mean()
-            acc_bioseq = ((sim_bioseq.argmax(0) == labels.argmax(0)).float()).mean()
-            acc        = (acc_text + acc_bioseq).mean()
+                acc_text   = ((sim_text.argmax(0) == labels.argmax(0)).float()).mean()
+                acc_bioseq = ((sim_bioseq.argmax(0) == labels.argmax(0)).float()).mean()
+                acc        = (acc_text + acc_bioseq).mean()
 
-            reduced_loss = reduce_tensor(loss.data, args.world_size)
-            losses.update(reduced_loss.item())
+                reduced_loss = reduce_tensor(loss.data, args.world_size)
+                losses.update(reduced_loss.item())
 
-            reduced_acc = reduce_tensor(acc.data, args.world_size)
-            accuracies.update(reduced_acc.item())
+                reduced_acc = reduce_tensor(acc.data, args.world_size)
+                accuracies.update(reduced_acc.item())
 
-            if args.rank == 0:
-                writer.add_scalars("1 loss/1 step", {f"valid {logid}": reduced_loss.item()}, step)
-                writer.add_scalars("2 accuracy/1 step", {f"valid {logid}": reduced_acc.item()}, step)
+                if args.rank == 0:
+                    writer.add_scalars("1 loss/1 step", {f"valid {logid}": reduced_loss.item()}, step)
+                    writer.add_scalars("2 accuracy/1 step", {f"valid {logid}": reduced_acc.item()}, step)
 
     def one_epoch(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch, step):
         time_epoch_start = time.time()
