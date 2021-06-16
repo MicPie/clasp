@@ -62,8 +62,8 @@ def get_args():
     # training
     parser.add_argument("--world-size", type=int, default=2,
                         help="training world size (default: 2)")
-    parser.add_argument("--bs", type=int, default=24,
-                        help="batch size (default: 24)")
+    parser.add_argument("--bs", type=int, default=8,
+                        help="batch size (default: 8)")
     parser.add_argument("--epochs", type=int, default=2,
                         help="epochs (default: 2)")
     parser.add_argument("--dryrun", action="store_true", default=False,
@@ -355,7 +355,7 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
 
     logger.info(f"{datetime.now()} rank: {args.rank} start training")
     for epoch in range(args.epochs):
-        ddp_model, optimizer, step = one_epoch(args, ddp_model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch, step=step, train=True)
+        ddp_model, optimizer, step = one_epoch(args, ddp_model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch, step=step)
 
     cleanup()
     #logger.info(f"{datetime.now()} rank: {args.rank} ddp cleanup")
