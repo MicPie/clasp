@@ -236,8 +236,10 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
                 accuracies.update(reduced_acc.item())
 
                 if args.rank == 0:
+                    logger.info(f"{datetime.now()} epoch: {epoch:>4} step: {step:>8} bt: {batch_time.avg:<10.3f}dt: {data_time.avg:<10.3f}{'train' if train else 'valid'} loss valid {logid}: {losses.avg:<10.3f} acc valid {logid}: {accuracies.avg:<10.3f}")
                     writer.add_scalars("1 loss/1 step", {f"valid {logid}": reduced_loss.item()}, step)
                     writer.add_scalars("2 accuracy/1 step", {f"valid {logid}": reduced_acc.item()}, step)
+
 
     def one_epoch(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch, step):
         time_epoch_start = time.time()
@@ -434,7 +436,8 @@ def trainer(rank, world_size):
                           batch_size=args.bs,
                           shuffle=True if not(args.dryrun) else False,
                           num_workers=args.numw,
-                          pin_memory=True)
+                          pin_memory=True,
+                          drop_last=True)
     logger.info(f"{datetime.now()} rank: {args.rank} created train dataloader with length {len(dl_train)}")
 
     ds_valid_id = CLASPRankSplitDataset(file_path=args.path_data_valid_id,
@@ -452,7 +455,8 @@ def trainer(rank, world_size):
                           batch_size=args.bs,
                           shuffle=False,
                           num_workers=args.numw,
-                          pin_memory=True)
+                          pin_memory=True,
+                          drop_last=True)
     logger.info(f"{datetime.now()} rank: {args.rank} created valid id dataloader with length {len(dl_valid_id)}")
 
     ds_valid_ood = CLASPRankSplitDataset(file_path=args.path_data_valid_ood,
@@ -470,7 +474,8 @@ def trainer(rank, world_size):
                           batch_size=args.bs,
                           shuffle=False,
                           num_workers=args.numw,
-                          pin_memory=True)
+                          pin_memory=True,
+                          drop_last=True)
     logger.info(f"{datetime.now()} rank: {args.rank} created train dataloader with length {len(dl_train)}")
 
     # model setup
