@@ -186,7 +186,7 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
     ddp_model = DDP(model, device_ids=[args.rank])
     logger.info(f"{datetime.now()} rank: {args.rank} created ddp model")
 
-    def validate(model, dl, step, logid="id"):
+    def validate(args, model, dl, step, logid="id"):
         losses     = AverageMeter()
         accuracies = AverageMeter()
 
@@ -319,18 +319,20 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
                     path_save = os.path.join(args.path_model, f"{'_'.join(str(datetime.now()).split('.')[0].split(' '))}_step{step:08d}.pt")
                     torch.save(ddp_model.state_dict(), path_save)
 
-                validate(model, dl_valid_id, step, logid="id")
-                validate(model, dl_valid_ood, step, logid="ood")
+                validate(args, model, dl_valid_id, step, logid="id")
+                validate(args, model, dl_valid_ood, step, logid="ood")
 
             bt = time.time() - tp
             bt = torch.tensor(bt).to(args.rank)
             bt = reduce_tensor(bt, args.world_size)
             batch_time.update(bt)
+
             if args.rank == 0:
                 writer.add_scalars("3 timings/1 step", {"dt": dt, "bt": bt}, step)
                 if (step % args.save_interval_step == 0) and (step != 0):
                     logger.info(f"{datetime.now()} epoch: {epoch:>4} step: {step:>8} bt: {batch_time.avg:<10.3f}dt: {data_time.avg:<10.3f}{'train' if train else 'valid'} loss: {losses.avg:<10.3f} acc: {accuracies.avg:<10.3f}")
-                step += 1
+
+            step += 1
 
             tp = time.time()
 
