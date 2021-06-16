@@ -405,9 +405,17 @@ def trainer(rank, world_size):
     logger.info(f"{datetime.now()} rank: {args.rank} created samplers and tokenizers")
 
     logger.info(f"{datetime.now()} rank: {args.rank} data setup")
-    with open(args.path_offsd, "r", encoding='utf-8') as offsd:
-        offset_dict = json.load(offsd)
-    logger.info(f"{datetime.now()} rank: {args.rank} loaded offset dict")
+    with open(args.path_offsd_train, "r", encoding='utf-8') as offsd:
+        offset_dict_train = json.load(offsd)
+    logger.info(f"{datetime.now()} rank: {args.rank} loaded train offset dict")
+
+    with open(args.path_offsd_valid_id, "r", encoding='utf-8') as offsd:
+        offset_dict_valid_id = json.load(offsd)
+    logger.info(f"{datetime.now()} rank: {args.rank} loaded valid id offset dict")
+
+    with open(args.path_offsd_valid_ood, "r", encoding='utf-8') as offsd:
+        offset_dict_valid_ood = json.load(offsd)
+    logger.info(f"{datetime.now()} rank: {args.rank} loaded valid ood offset dict")
 
     ds_train = CLASPRankSplitDataset(file_path=args.path_data_train,
                            offset_dict=offset_dict,
