@@ -38,14 +38,24 @@ mv uniprot_full_wo-valid-ood.csv.995 uniprot_full_wo-valid-ood-id.csv
 mv uniprot_full_wo-valid-ood.csv.005 uniprot_full_valid-id.csv
 ```
 
-Get uniprot accn of smaller split:
+Get another 0.5% subsample of the csv data file for id test data file:
+```
+gawk 'BEGIN {srand()} {f = FILENAME (rand() <= 0.995 ? ".995" : ".005"); print > f}' uniprot_full_wo-valid-ood-id.csv
+mv uniprot_full_wo-valid-ood-id.csv.995 uniprot_full_wo-valid-ood-id-test-id.csv
+mv uniprot_full_wo-valid-ood-id.csv.005 uniprot_full_test-id.csv
+```
+
+Get uniprot accn of valid and test id split:
 ```
 cut -d, -f1,2 uniprot_full_valid-id.csv > uniprot_full_valid-id_accn.csv
+cut -d, -f1,2 uniprot_full_test-id.csv > uniprot_full_test-id_accn.csv
 ```
 
 Create offset dict jsons:
 ```
 python preproc/create_offset_dict.py -i ../data/uniprot_full_valid-ood.csv -o ../data/uniprot_full_valid-ood_offsetdict.json;
 python preproc/create_offset_dict.py -i ../data/uniprot_full_valid-id.csv -o ../data/uniprot_full_valid-id_offsetdict.json;
-python preproc/create_offset_dict.py -i ../data/uniprot_full_wo-valid-ood-id.csv -o ../data/uniprot_full_wo-valid-ood-id_offsetdict.json;
+python preproc/create_offset_dict.py -i ../data/uniprot_full_test-id.csv -o ../data/uniprot_full_test-id_offsetdict.json;
+(python preproc/create_offset_dict.py -i ../data/uniprot_full_wo-valid-ood-id.csv -o ../data/uniprot_full_wo-valid-ood-id_offsetdict.json;)
+python preproc/create_offset_dict.py -i ../data/uniprot_full_wo-valid-ood-id-test-id.csv -o ../data/uniprot_full_wo-valid-ood-id-test-id_offsetdict.json;
 ```
