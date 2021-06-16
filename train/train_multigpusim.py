@@ -290,7 +290,7 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
             sim_text   = (einsum('i d, j d -> i j', text_latents, all_bioseq_latents) * temp)
             sim_bioseq = (einsum('i d, j d -> i j', bioseq_latents, all_text_latents) * temp)
 
-            model.temperature.data.clamp_(-torch.log(torch.tensor(100.)), torch.log(torch.tensor(100.)))
+            model.model.temperature.data.clamp_(-torch.log(torch.tensor(100.)), torch.log(torch.tensor(100.)))
 
             labels = torch.arange(args.rank*args.bs, (args.rank+1)*args.bs).to(args.rank)
 
