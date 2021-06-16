@@ -3,7 +3,7 @@ We use the ood and id valid dataset split outlined in the ProGen publication (ht
 ProGen data preprocessing:
 ```
 wget http://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.regions.uniprot.tsv.gz
-
+```
 
 Get ProGen ood entries:
 `grep -f ../progen_ood_families.csv Pfam-A.regions.uniprot.tsv > Pfam-A_regions_uniprot_progen_ood_families.tsv`
