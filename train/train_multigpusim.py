@@ -26,7 +26,7 @@ from clasp import CLASP, Transformer, tokenize, basic_rand_sampler, basic_aa_tok
 # multi-GPU training script based on https://pytorch.org/tutorials/intermediate/ddp_tutorial.html
 
 # Example command to start a training run:
-# python train.py --id TEST --path-data "data/uniprot_sprot.csv" --path-offsd "data/uniprot_sprot_offset_dict.json" --save-interval-step 2 --path-weights "results/testrun8big/model/2021-04-18_03:18:10_step000010000.pt" --dryrun
+# python train_multigpusim.py --id TEST --path-data-train "data/uniprot_full_valid-ood.csv" --path-offsd-train "data/uniprot_full_valid-ood_offsetdict.json" --path-data-valid-id "data/uniprot_full_valid-ood.csv" --path-offsd-valid-id "data/uniprot_full_valid-ood_offsetdict.json" --path-data-valid-ood "data/uniprot_full_valid-ood.csv" --path-offsd-valid-ood "data/uniprot_full_valid-ood_offsetdict.json" --save-interval-step 2 --dryrun
 
 
 def get_args():
