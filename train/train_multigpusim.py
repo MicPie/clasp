@@ -418,7 +418,7 @@ def trainer(rank, world_size):
     logger.info(f"{datetime.now()} rank: {args.rank} loaded valid ood offset dict")
 
     ds_train = CLASPRankSplitDataset(file_path=args.path_data_train,
-                           offset_dict=offset_dict,
+                           offset_dict=offset_dict_train,
                            rank=args.rank,
                            world_size=args.world_size,
                            logger=logger,
@@ -436,7 +436,7 @@ def trainer(rank, world_size):
     logger.info(f"{datetime.now()} rank: {args.rank} created train dataloader with length {len(dl_train)}")
 
     ds_valid_id = CLASPRankSplitDataset(file_path=args.path_data_valid_id,
-                           offset_dict=offset_dict,
+                           offset_dict=offset_dict_valid_id,
                            rank=args.rank,
                            world_size=args.world_size,
                            logger=logger,
@@ -454,7 +454,7 @@ def trainer(rank, world_size):
     logger.info(f"{datetime.now()} rank: {args.rank} created valid id dataloader with length {len(dl_valid_id)}")
 
     ds_valid_ood = CLASPRankSplitDataset(file_path=args.path_data_valid_ood,
-                           offset_dict=offset_dict,
+                           offset_dict=offset_dict_valid_od,
                            rank=args.rank,
                            world_size=args.world_size,
                            logger=logger,
