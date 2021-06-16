@@ -349,7 +349,7 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
         epoch_time = reduce_tensor(et, args.world_size)
 
         if args.rank == 0:
-            logger.info(f"{datetime.now()} epoch: {epoch:>4} et: {epoch_time:<11.3f}bt: {batch_time.avg:<10.3f}dt: {data_time.avg:<10.3f}{'train' if train else 'valid'} loss: {losses.avg:<10.3f} acc: {accuracies.avg:<10.3f}")
+            logger.info(f"{datetime.now()} epoch: {epoch:>4} et: {epoch_time:<11.3f}bt: {batch_time.avg:<10.3f}dt: {data_time.avg:<10.3f}train     loss: {losses.avg:<10.3f} acc: {accuracies.avg:<10.3f}")
             writer.add_scalars("1 loss/2 epoch", {"train": losses.avg}, epoch)
             writer.add_scalars("2 accuracy/2 epoch", {"train": accuracies.avg}, epoch)
             writer.add_scalars("3 timings/2 step", {"dt": data_time.avg, "bt": batch_time.avg}, epoch)
