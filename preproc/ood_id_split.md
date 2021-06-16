@@ -43,7 +43,7 @@ Get uniprot accn of smaller split:
 cut -d, -f1,2 uniprot_full_valid-id.csv > uniprot_full_valid-id_accn.csv
 ```
 
-Get uniprot accn of smaller split:
+Create offset dict jsons:
 ```
 python preproc/create_offset_dict.py -i ../data/uniprot_full_valid-ood.csv -o ../data/uniprot_full_valid-ood_offsetdict.json;
 python preproc/create_offset_dict.py -i ../data/uniprot_full_valid-id.csv -o ../data/uniprot_full_valid-id_offsetdict.json;
