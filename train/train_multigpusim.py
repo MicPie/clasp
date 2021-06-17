@@ -235,10 +235,10 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
                 reduced_acc = reduce_tensor(acc.data, args.world_size)
                 accuracies.update(reduced_acc.item())
 
-                if args.rank == 0:
-                    logger.info(f"{datetime.now()} epoch: {epoch:>4} step: {step:>8}                             {logid} loss: {losses.avg:<10.3f} acc: {accuracies.avg:<10.3f}")
-                    writer.add_scalars("1 loss/1 step", {f"{logid.strip()}": reduced_loss.item()}, step)
-                    writer.add_scalars("2 accuracy/1 step", {f"{logid.strip()}": reduced_acc.item()}, step)
+            if args.rank == 0:
+                logger.info(f"{datetime.now()} epoch: {epoch:>4} step: {step:>8}                             {logid} loss: {losses.avg:<10.3f} acc: {accuracies.avg:<10.3f}")
+                writer.add_scalars("1 loss/1 step", {f"{logid.strip()}": losses.avg}, step)
+                writer.add_scalars("2 accuracy/1 step", {f"{logid.strip()}": accuracies.avg}, step)
 
 
     def one_epoch(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch, step):
