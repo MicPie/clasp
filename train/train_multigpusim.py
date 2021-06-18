@@ -38,22 +38,18 @@ def get_args():
     # data
     parser.add_argument("--id", type=str,
                         help="run id")
-
     parser.add_argument("--path-data-train", type=str,
                         help="path preprocessed csv file for training")
     parser.add_argument("--path-offsd-train", type=str,
                         help="path preprocessed offset dictionary json file for training")
-
     parser.add_argument("--path-data-valid-id", type=str,
                         help="path preprocessed csv file for valid id")
     parser.add_argument("--path-offsd-valid-id", type=str,
                         help="path preprocessed offset dictionary json file for valid id")
-
     parser.add_argument("--path-data-valid-ood", type=str,
                         help="path preprocessed csv file for valid ood")
     parser.add_argument("--path-offsd-valid-ood", type=str,
                         help="path preprocessed offset dictionary json file for valid ood")
-
     parser.add_argument("--path-results", type=str, default="results",
                         help="path to the results data, i.e., logs, model weights, etc. (default: results)")
     parser.add_argument("--path-weights", type=str, default=None,
@@ -162,14 +158,8 @@ class AverageMeter(object):
 def reduce_tensor(tensor, n):
     rt = tensor.clone()
     dist.all_reduce(rt, op=dist.ReduceOp.SUM)
-    #print(f"rt/n: {rt}/{n}")
     rt /= n
     return rt
-
-
-#def log_info_rank0(logger, rank, output):
-#    if rank == 0:
-#        logger.info(f"{datetime.now()} {output}")
 
 
 def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epochs, logger=None, writer=None):
@@ -188,7 +178,7 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
     ddp_model = DDP(model, device_ids=[args.rank])
     logger.info(f"{datetime.now()} rank: {args.rank} created ddp model")
 
-    def validate(args, model, dl, step, logid):
+    def validate(args, model, dl, logger, step, logid=None):
         losses     = AverageMeter()
         accuracies = AverageMeter()
 
@@ -212,6 +202,7 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
                     return_latents_temp = True
                 )
 
+                # TO DO: Move this until loss into the CLASP class in clasp/clasp.py.
                 all_text_latents   = [torch.zeros_like(text_latents)   for _ in range(dist.get_world_size())]
                 all_bioseq_latents = [torch.zeros_like(bioseq_latents) for _ in range(dist.get_world_size())]
                 dist.all_gather(all_text_latents, text_latents)
@@ -238,11 +229,11 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
                 accuracies.update(reduced_acc.item())
 
             if args.rank == 0:
-                logger.info(f"{datetime.now()} epoch: {epoch:>4} step: {step:>8}                             {logid} loss: {losses.avg:<10.3f} acc: {accuracies.avg:<10.3f}")
-                writer.add_scalars("1 loss/1 step", {f"{logid.strip()}": losses.avg}, step)
-                writer.add_scalars("2 accuracy/1 step", {f"{logid.strip()}": accuracies.avg}, step)
-                wandb.log({f"1 loss/1 step {logid.strip()}": losses.avg})
-                wandb.log({f"2 accuracy/1 step {logid.strip()}": accuracies.avg})
+                writer.add_scalars("1 loss/1 step", {f"{logid}": losses.avg}, step)
+                writer.add_scalars("2 accuracy/1 step", {f"{logid}": accuracies.avg}, step)
+                wandb.log({"1 loss/1 step": {f"{logid}": losses.avg}}, step=step)
+                wandb.log({"2 accuracy/1 step": {f"{logid}": accuracies.avg}}, step=step)
+                logger.info(f"{datetime.now()} epoch: {epoch:>4} step: {step:>8}{' '*29}{logid:<10} loss: {losses.avg:<10.3f} acc: {accuracies.avg:<10.3f}")
 
 
     def one_epoch(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch, step):
@@ -285,6 +276,7 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
                 return_latents_temp = True
             )
 
+            # TO DO: Move this until loss into the CLASP class in clasp/clasp.py.
             all_text_latents   = [torch.zeros_like(text_latents)   for _ in range(dist.get_world_size())]
             all_bioseq_latents = [torch.zeros_like(bioseq_latents) for _ in range(dist.get_world_size())]
             dist.all_gather(all_text_latents, text_latents)
@@ -296,8 +288,6 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
             sim_text   = (einsum('i d, j d -> i j', text_latents, all_bioseq_latents) * temp)
             sim_bioseq = (einsum('i d, j d -> i j', bioseq_latents, all_text_latents) * temp)
 
-            model.module.temperature.data.clamp_(-torch.log(torch.tensor(100.)), torch.log(torch.tensor(100.)))
-
             labels = torch.arange(args.rank*args.bs, (args.rank+1)*args.bs).to(args.rank)
 
             loss = ((F.cross_entropy(sim_text, labels) + F.cross_entropy(sim_bioseq, labels)) / 2).mean()
@@ -305,6 +295,8 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
             loss.backward()
             clip_grad_norm_(model.parameters(), 1.)
             optimizer.step()
+
+            model.module.temperature.data.clamp_(-torch.log(torch.tensor(100.)), torch.log(torch.tensor(100.)))
 
             acc_text   = ((sim_text.argmax(0) == labels.argmax(0)).float()).mean()
             acc_bioseq = ((sim_bioseq.argmax(0) == labels.argmax(0)).float()).mean()
@@ -316,44 +308,33 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
             reduced_acc = reduce_tensor(acc.data, args.world_size)
             accuracies.update(reduced_acc.item())
 
-            if args.rank == 0:
-                writer.add_scalars("1 loss/1 step", {"train": reduced_loss.item()}, step)
-                writer.add_scalars("2 accuracy/1 step", {"train": reduced_acc.item()}, step)
-                writer.add_scalars("3 temperature/1 step", {"train": model.module.temperature.data.item()}, step)
-                wandb.log({"1 loss/1 step train": reduced_loss.item()})
-                wandb.log({"2 accuracy/1 step train": reduced_acc.item()})
-                wandb.log({"3 temperature/1 step train": model.module.temperature.data.item()})
-
-
-            if (step % args.save_interval_step == 0) and (step != 0):
-                if args.rank == 0:
-                    path_save = os.path.join(args.path_model, f"{'_'.join(str(datetime.now()).split('.')[0].split(' '))}_step{step:08d}.pt")
-                    torch.save(ddp_model.state_dict(), path_save)
-
             bt = time.time() - tp
             bt = torch.tensor(bt).to(args.rank)
             bt = reduce_tensor(bt, args.world_size)
             batch_time.update(bt)
 
             if args.rank == 0:
+                writer.add_scalars("1 loss/1 step", {"train": reduced_loss.item()}, step)
+                writer.add_scalars("2 accuracy/1 step", {"train": reduced_acc.item()}, step)
+                writer.add_scalars("3 temperature/1 step", {"train": model.module.temperature.data.item()}, step)
                 writer.add_scalars("4 timings/1 step", {"dt": dt, "bt": bt}, step)
-                wandb.log({"4 timings/1 step dt": dt})
-                wandb.log({"4 timings/1 step bt": bt})
+                wandb.log({"1 loss/1 step": {"train": reduced_loss.item()}}, step=step)
+                wandb.log({"2 accuracy/1 step": {"train": reduced_acc.item()}}, step=step)
+                wandb.log({"3 temperature/1 step": {"train": model.module.temperature.data.item()}}, step=step)
+                wandb.log({"4 timings/1 step": {"dt": dt, "bt": bt}}, step=step)
                 if (step % args.save_interval_step == 0) and (step != 0):
-                    logger.info(f"{datetime.now()} epoch: {epoch:>4} step: {step:>8} bt: {batch_time.avg:<10.3f}dt: {data_time.avg:<10.3f}train     loss: {losses.avg:<10.3f} acc: {accuracies.avg:<10.3f}")
+                    path_save = os.path.join(args.path_model, f"{'_'.join(str(datetime.now()).split('.')[0].split(' '))}_step{step:08d}.pt")
+                    torch.save(ddp_model.module.state_dict(), path_save)
+                    logger.info(f"{datetime.now()} epoch: {epoch:>4} step: {step:>8} bt: {batch_time.avg:<10.3f}dt: {data_time.avg:<10.3f}{'train':<10} loss: {losses.avg:<10.3f} acc: {accuracies.avg:<10.3f}")
 
             if (step % args.save_interval_step == 0) and (step != 0):
-                validate(args, model, dl_valid_id, step, logid="valid id ")
-                validate(args, model, dl_valid_ood, step, logid="valid ood")
+                validate(args, model, dl_valid_id, logger, step, logid="valid id")
+                validate(args, model, dl_valid_ood, logger, step, logid="valid ood")
+
 
             step += 1
 
             tp = time.time()
-
-        if args.rank == 0:
-            if epoch % args.save_interval_epoch == 0:
-                path_save = os.path.join(args.path_model, f"{'_'.join(str(datetime.now()).split('.')[0].split(' '))}_epoch{epoch:03d}.pt")
-                torch.save(ddp_model.state_dict(), path_save)
 
         time_epoch_end = time.time()
         et = time_epoch_end - time_epoch_start
@@ -361,16 +342,23 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
         epoch_time = reduce_tensor(et, args.world_size)
 
         if args.rank == 0:
-            logger.info(f"{datetime.now()} epoch: {epoch:>4} et: {epoch_time:<11.3f}bt: {batch_time.avg:<10.3f}dt: {data_time.avg:<10.3f}train     loss: {losses.avg:<10.3f} acc: {accuracies.avg:<10.3f}")
             writer.add_scalars("1 loss/2 epoch", {"train": losses.avg}, epoch)
             writer.add_scalars("2 accuracy/2 epoch", {"train": accuracies.avg}, epoch)
             writer.add_scalars("4 timings/2 step", {"dt": data_time.avg, "bt": batch_time.avg}, epoch)
             writer.add_scalars("4 timings/3 epoch", {"et": epoch_time}, epoch)
-            wandb.log({"1 loss/2 epoch train": losses.avg})
-            wandb.log({"2 accuracy/2 epoch train": accuracies.avg})
-            wandb.log({"4 timings/2 step dt": data_time.avg})
-            wandb.log({"4 timings/2 step bt": batch_time.avg})
-            wandb.log({"4 timings/3 epoch et": epoch_time})
+            wandb.log({"1 loss/2 epoch": {"train": losses.avg}, "epoch": epoch})
+            wandb.log({"2 accuracy/2 epoch": {"train": accuracies.avg}, "epoch": epoch})
+            wandb.log({"4 timings/2 step": {"dt": data_time.avg, "bt": batch_time.avg}, "epoch": epoch})
+            wandb.log({"4 timings/3 epoch": {"et": epoch_time}, "epoch": epoch})
+            if epoch % args.save_interval_epoch == 0:
+                path_save = os.path.join(args.path_model, f"{'_'.join(str(datetime.now()).split('.')[0].split(' '))}_epoch{epoch:03d}.pt")
+                torch.save(ddp_model.module.state_dict(), path_save)
+                logger.info(f"{datetime.now()} epoch: {epoch:>4} et: {epoch_time:<11.3f}bt: {batch_time.avg:<10.3f}dt: {data_time.avg:<10.3f}{'train':<10} loss: {losses.avg:<10.3f} acc: {accuracies.avg:<10.3f}")
+
+        if epoch % args.save_interval_epoch == 0:
+            validate(args, model, dl_valid_id, logger, step, logid="valid id")
+            validate(args, model, dl_valid_ood, logger, step, logid="valid ood")
+
 
         return model, optimizer, step
 
@@ -408,13 +396,13 @@ def trainer(rank, world_size):
     os.makedirs(args.path_model, exist_ok=True)
 
     # setup loggers
-    # TO DO: Revisit file name when process are more than 1min apart.
+    # TO DO: Revisit file name when processes are more than 1min apart. (We want to log the setup from every rank.)
     fn_log = f"clasp_train_{'_'.join(str(datetime.now()).split('.')[0].split(' '))}.log"
     logger = create_logger(args.path_log, file_name=fn_log)
     logger.info(f"{datetime.now()} rank: {args.rank} start logging")
     if args.rank == 0:
         writer = SummaryWriter(log_dir=args.path_tb, flush_secs=2)
-        wandb.init(project='clasp', entity='eleutherai')
+        wandb.init(name=args.id, project='clasp', entity='eleutherai')
         config = wandb.config
 
     if args.rank == 0:
@@ -524,13 +512,9 @@ def trainer(rank, world_size):
     )
 
     if args.path_weights:
-        # TO DO: Check if this setup is really needed due to ddp.
+        # TO DO: Check if we really need to load the weights on each rank for ddp.
         ckpt = torch.load(args.path_weights, map_location="cpu")
-        new_ckpt = OrderedDict() 
-        for k, v in ckpt.items():
-            name = k[7:] # remove "module."
-            new_ckpt[name] = v
-        model.load_state_dict(new_ckpt)
+        model.load_state_dict(ckpt)
         logger.info(f"{datetime.now()} rank: {args.rank} reloaded model weights from {args.path_weights}")
 
     logger.info(f"{datetime.now()} rank: {args.rank} created clasp model")
