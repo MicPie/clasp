@@ -178,7 +178,7 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
     ddp_model = DDP(model, device_ids=[args.rank])
     logger.info(f"{datetime.now()} rank: {args.rank} created ddp model")
 
-    def validate(args, model, dl, logger, step, logid=None):
+    def validate(args, model, dl, logger, writer, step, logid=None):
         losses     = AverageMeter()
         accuracies = AverageMeter()
 
@@ -229,10 +229,10 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
                 accuracies.update(reduced_acc.item())
 
             if args.rank == 0:
-                writer.add_scalars("1 loss/1 step", {f"{logid}": losses.avg}, step)
-                writer.add_scalars("2 accuracy/1 step", {f"{logid}": accuracies.avg}, step)
-                wandb.log({"1 loss/1 step": {f"{logid}": losses.avg}}, step=step)
-                wandb.log({"2 accuracy/1 step": {f"{logid}": accuracies.avg}}, step=step)
+                writer.add_scalars("1 loss/1 step", {logid: losses.avg}, step)
+                writer.add_scalars("2 accuracy/1 step", {logid: accuracies.avg}, step)
+                wandb.log({"1 loss/1 step": {logid: losses.avg}}, step=step)
+                wandb.log({"2 accuracy/1 step": {logid: accuracies.avg}}, step=step)
                 logger.info(f"{datetime.now()} epoch: {epoch:>4} step: {step:>8}{' '*29}{logid:<10} loss: {losses.avg:<10.3f} acc: {accuracies.avg:<10.3f}")
 
 
@@ -328,8 +328,8 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
                     logger.info(f"{datetime.now()} epoch: {epoch:>4} step: {step:>8} bt: {batch_time.avg:<10.3f}dt: {data_time.avg:<10.3f}{'train':<10} loss: {losses.avg:<10.3f} acc: {accuracies.avg:<10.3f}")
 
             if (step % args.save_interval_step == 0) and (step != 0):
-                validate(args, model, dl_valid_id, logger, step, logid="valid id")
-                validate(args, model, dl_valid_ood, logger, step, logid="valid ood")
+                validate(args, model, dl_valid_id, logger, writer, step, logid="valid-id")
+                validate(args, model, dl_valid_ood, logger, writer, step, logid="valid-ood")
 
 
             step += 1
@@ -356,8 +356,8 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
                 logger.info(f"{datetime.now()} epoch: {epoch:>4} et: {epoch_time:<11.3f}bt: {batch_time.avg:<10.3f}dt: {data_time.avg:<10.3f}{'train':<10} loss: {losses.avg:<10.3f} acc: {accuracies.avg:<10.3f}")
 
         if epoch % args.save_interval_epoch == 0:
-            validate(args, model, dl_valid_id, logger, step, logid="valid id")
-            validate(args, model, dl_valid_ood, logger, step, logid="valid ood")
+            validate(args, model, dl_valid_id, logger, writer, step, logid="valid-id")
+            validate(args, model, dl_valid_ood, logger, writer, step, logid="valid-ood")
 
 
         return model, optimizer, step
@@ -403,7 +403,6 @@ def trainer(rank, world_size):
     if args.rank == 0:
         writer = SummaryWriter(log_dir=args.path_tb, flush_secs=2)
         wandb.init(name=args.id, project='clasp', entity='eleutherai')
-        config = wandb.config
 
     if args.rank == 0:
         # show args
