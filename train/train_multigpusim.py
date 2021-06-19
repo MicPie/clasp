@@ -231,8 +231,8 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
             if args.rank == 0:
                 writer.add_scalars("1 loss/1 step", {logid: losses.avg}, step)
                 writer.add_scalars("2 accuracy/1 step", {logid: accuracies.avg}, step)
-                wandb.log({"1 loss/1 step": {logid: losses.avg}}, step=step)
-                wandb.log({"2 accuracy/1 step": {logid: accuracies.avg}}, step=step)
+                wandb.log({"1 loss/1 step": {logid: losses.avg}, "step": step})
+                wandb.log({"2 accuracy/1 step": {logid: accuracies.avg}, "step": step})
                 logger.info(f"{datetime.now()} epoch: {epoch:>4} step: {step:>8}{' '*29}{logid:<10} loss: {losses.avg:<10.3f} acc: {accuracies.avg:<10.3f}")
 
 
@@ -318,10 +318,10 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
                 writer.add_scalars("2 accuracy/1 step", {"train": reduced_acc.item()}, step)
                 writer.add_scalars("3 temperature/1 step", {"train": model.module.temperature.data.item()}, step)
                 writer.add_scalars("4 timings/1 step", {"dt": dt, "bt": bt}, step)
-                wandb.log({"1 loss/1 step": {"train": reduced_loss.item()}}, step=step)
-                wandb.log({"2 accuracy/1 step": {"train": reduced_acc.item()}}, step=step)
-                wandb.log({"3 temperature/1 step": {"train": model.module.temperature.data.item()}}, step=step)
-                wandb.log({"4 timings/1 step": {"dt": dt, "bt": bt}}, step=step)
+                wandb.log({"1 loss/1 step": {"train": reduced_loss.item()}, "step": step})
+                wandb.log({"2 accuracy/1 step": {"train": reduced_acc.item()}, "step": step})
+                wandb.log({"3 temperature/1 step": {"train": model.module.temperature.data.item()}, "step": step})
+                wandb.log({"4 timings/1 step": {"dt": dt, "bt": bt}, "step": step})
                 if (step % args.save_interval_step == 0) and (step != 0):
                     path_save = os.path.join(args.path_model, f"{'_'.join(str(datetime.now()).split('.')[0].split(' '))}_step{step:08d}.pt")
                     torch.save(ddp_model.module.state_dict(), path_save)
