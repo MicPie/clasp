@@ -20,7 +20,7 @@ from collections import OrderedDict
 
 from torch.nn.utils import clip_grad_norm_
 
-from clasp import CLASP, Transformer, tokenize, basic_rand_sampler, basic_aa_tokenizer, CLASPRankSplitDataset
+from clasp import CLASP, Transformer, tokenize, basic_sampler, basic_rand_sampler, basic_aa_tokenizer, CLASPRankSplitDataset
 
 import wandb
 
@@ -218,8 +218,8 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
 
                 loss = ((F.cross_entropy(sim_text, labels) + F.cross_entropy(sim_bioseq, labels)) / 2).mean()
 
-                acc_text   = ((sim_text.argmax(0) == labels.argmax(0)).float()).mean()
-                acc_bioseq = ((sim_bioseq.argmax(0) == labels.argmax(0)).float()).mean()
+                acc_text   = ((sim_text.argmax(1) == labels).float()).mean()
+                acc_bioseq = ((sim_bioseq.argmax(1) == labels).float()).mean()
                 acc        = (acc_text + acc_bioseq).mean()
 
                 reduced_loss = reduce_tensor(loss.data, args.world_size)
@@ -298,8 +298,8 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
 
             model.module.temperature.data.clamp_(-torch.log(torch.tensor(100.)), torch.log(torch.tensor(100.)))
 
-            acc_text   = ((sim_text.argmax(0) == labels.argmax(0)).float()).mean()
-            acc_bioseq = ((sim_bioseq.argmax(0) == labels.argmax(0)).float()).mean()
+            acc_text   = ((sim_text.argmax(1) == labels).float()).mean()
+            acc_bioseq = ((sim_bioseq.argmax(1) == labels).float()).mean()
             acc        = (acc_text + acc_bioseq).mean()
 
             reduced_loss = reduce_tensor(loss.data, args.world_size)
@@ -410,11 +410,15 @@ def trainer(rank, world_size):
             logger.info(f"{k:>20}: {args.__dict__[k]}")
 
     # data setup
-    text_sampler = partial(basic_rand_sampler, sample_len=1024)
-    text_tok     = partial(tokenize, context_length=1024, return_mask=True)
+    text_sampler_fixed = partial(basic_sampler, sample_len=1024)
+    text_tok_fixed     = partial(tokenize, context_length=1024, return_mask=True)
+    text_sampler_rand  = partial(basic_rand_sampler, sample_len=1024)
+    text_tok_rand      = partial(tokenize, context_length=1024, return_mask=True)
 
-    bioseq_sampler = partial(basic_rand_sampler, sample_len=512)
-    bioseq_tok     = partial(basic_aa_tokenizer, context_length=512, return_mask=True)
+    bioseq_sampler_fixed = partial(basic_sampler, sample_len=512)
+    bioseq_tok_fixed     = partial(basic_aa_tokenizer, context_length=512, return_mask=True)
+    bioseq_sampler_rand  = partial(basic_rand_sampler, sample_len=512)
+    bioseq_tok_rand      = partial(basic_aa_tokenizer, context_length=512, return_mask=True)
     logger.info(f"{datetime.now()} rank: {args.rank} created samplers and tokenizers")
 
     logger.info(f"{datetime.now()} rank: {args.rank} data setup")
@@ -435,10 +439,10 @@ def trainer(rank, world_size):
                            rank=args.rank,
                            world_size=args.world_size,
                            logger=logger,
-                           text_sampler=text_sampler,
-                           bioseq_sampler=bioseq_sampler,
-                           text_tok=text_tok,
-                           bioseq_tok=bioseq_tok)
+                           text_sampler=text_sampler_rand,
+                           bioseq_sampler=bioseq_sampler_rand,
+                           text_tok=text_tok_rand,
+                           bioseq_tok=bioseq_tok_rand)
     logger.info(f"{datetime.now()} rank: {args.rank} created train dataset")
 
     dl_train = DataLoader(ds_train,
@@ -454,10 +458,10 @@ def trainer(rank, world_size):
                            rank=args.rank,
                            world_size=args.world_size,
                            logger=logger,
-                           text_sampler=text_sampler,
-                           bioseq_sampler=bioseq_sampler,
-                           text_tok=text_tok,
-                           bioseq_tok=bioseq_tok)
+                           text_sampler=text_sampler_fixed,
+                           bioseq_sampler=bioseq_sampler_fixed,
+                           text_tok=text_tok_fixed,
+                           bioseq_tok=bioseq_tok_fixed)
     logger.info(f"{datetime.now()} rank: {args.rank} created valid id dataset")
 
     dl_valid_id = DataLoader(ds_valid_id,
@@ -473,10 +477,10 @@ def trainer(rank, world_size):
                            rank=args.rank,
                            world_size=args.world_size,
                            logger=logger,
-                           text_sampler=text_sampler,
-                           bioseq_sampler=bioseq_sampler,
-                           text_tok=text_tok,
-                           bioseq_tok=bioseq_tok)
+                           text_sampler=text_sampler_fixed,
+                           bioseq_sampler=bioseq_sampler_fixed,
+                           text_tok=text_tok_fixed,
+                           bioseq_tok=bioseq_tok_fixed)
     logger.info(f"{datetime.now()} rank: {args.rank} created valid ood dataset")
 
     dl_valid_ood = DataLoader(ds_valid_ood,
