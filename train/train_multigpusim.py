@@ -220,7 +220,7 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
 
                 acc_text   = ((sim_text.argmax(1) == labels).float()).mean()
                 acc_bioseq = ((sim_bioseq.argmax(1) == labels).float()).mean()
-                acc        = (acc_text + acc_bioseq).mean()
+                acc        = (acc_text + acc_bioseq) / 2
 
                 reduced_loss = reduce_tensor(loss.data, args.world_size)
                 losses.update(reduced_loss.item())
@@ -300,7 +300,7 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
 
             acc_text   = ((sim_text.argmax(1) == labels).float()).mean()
             acc_bioseq = ((sim_bioseq.argmax(1) == labels).float()).mean()
-            acc        = (acc_text + acc_bioseq).mean()
+            acc        = (acc_text + acc_bioseq) / 2
 
             reduced_loss = reduce_tensor(loss.data, args.world_size)
             losses.update(reduced_loss.item())
