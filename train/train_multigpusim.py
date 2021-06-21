@@ -178,7 +178,7 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
     ddp_model = DDP(model, device_ids=[args.rank])
     logger.info(f"{datetime.now()} rank: {args.rank} created ddp model")
 
-    def validate(args, model, dl, logger, writer, step, logid=None):
+    def validate(args, model, dl, logger, writer, step, epoch, step_epoch="step", logid=None):
         losses     = AverageMeter()
         accuracies = AverageMeter()
 
@@ -234,6 +234,11 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
                 wandb.log({"1 loss/1 step": {logid: losses.avg}, "step": step})
                 wandb.log({"2 accuracy/1 step": {logid: accuracies.avg}, "step": step})
                 logger.info(f"{datetime.now()} epoch: {epoch:>4} step: {step:>8}{' '*29}{logid:<10} loss: {losses.avg:<10.3f} acc: {accuracies.avg:<10.3f}")
+                if step_epoch == "epoch":
+                    writer.add_scalars("1 loss/2 epoch", {logid: losses.avg}, epoch)
+                    writer.add_scalars("2 accuracy/2 epoch", {logid: accuracies.avg}, epoch)
+                    wandb.log({"1 loss/2 epoch": {logid: losses.avg}, "epoch": epoch})
+                    wandb.log({"2 accuracy/2 epoch": {logid: accuracies.avg}, "epoch": epoch})
 
 
     def one_epoch(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch, step):
@@ -328,8 +333,8 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
                     logger.info(f"{datetime.now()} epoch: {epoch:>4} step: {step:>8} bt: {batch_time.avg:<10.3f}dt: {data_time.avg:<10.3f}{'train':<10} loss: {losses.avg:<10.3f} acc: {accuracies.avg:<10.3f}")
 
             if (step % args.save_interval_step == 0) and (step != 0):
-                validate(args, model, dl_valid_id, logger, writer, step, logid="valid-id")
-                validate(args, model, dl_valid_ood, logger, writer, step, logid="valid-ood")
+                validate(args, model, dl_valid_id, logger, writer, epoch, step, step_epoch="step", logid="valid-id")
+                validate(args, model, dl_valid_ood, logger, writer, epoch, step, step_epoch="step", logid="valid-ood")
 
 
             step += 1
@@ -356,8 +361,8 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
                 logger.info(f"{datetime.now()} epoch: {epoch:>4} et: {epoch_time:<11.3f}bt: {batch_time.avg:<10.3f}dt: {data_time.avg:<10.3f}{'train':<10} loss: {losses.avg:<10.3f} acc: {accuracies.avg:<10.3f}")
 
         if epoch % args.save_interval_epoch == 0:
-            validate(args, model, dl_valid_id, logger, writer, step, logid="valid-id")
-            validate(args, model, dl_valid_ood, logger, writer, step, logid="valid-ood")
+            validate(args, model, dl_valid_id, logger, writer, epoch, step, step_epoch="epoch", logid="valid-id")
+            validate(args, model, dl_valid_ood, logger, writer, epoch, step, step_epoch="epoch", logid="valid-ood")
 
 
         return model, optimizer, step
