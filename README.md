@@ -5,10 +5,24 @@ Repository for creating models pretrained on language and aminoacid sequences si
 
 ## Updates
 
-Training behaviour from latest test run:
-<p align="center"><img src="https://github.com/MicPie/clasp/blob/main/img/CLASP_run39.png"></p>
+Run 44 with UniProt full dataset (~213 mio samples):
+<p align="center"><img src="https://github.com/MicPie/clasp/blob/main/img/CLASP_run44_step76063.png"></p>
 
-*Work in progress - more updates soon!*
+Run 39 with UniProt SProt dataset (~0.5 mio samples):
+<p align="center"><img src="https://github.com/MicPie/clasp/blob/main/img/CLASP_run39_step42914.png"></p>
+
+Comparison run 39 and run 44 from above:
+<p align="center"><img src="https://github.com/MicPie/clasp/blob/main/img/CLASP_run39_run44.png"></p>
+
+*We will release soon a checkpoint from run 44 with a jupyter notebook on how it could be potentially used.*
+
+*Work in progress, more updates soon!*
+
+
+## Discussion
+[EleutherAI discord server](https://discord.gg/zBGx3azzUn) or [alphafold2 discord server](https://discord.com/invite/cU24s3Sc8c). 
+
+Ping @MicPie
 
 
 ## Data
