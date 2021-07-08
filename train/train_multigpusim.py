@@ -22,8 +22,6 @@ from torch.nn.utils import clip_grad_norm_
 
 from clasp import CLASP, Transformer, tokenize, basic_sampler, basic_rand_sampler, basic_aa_tokenizer, CLASPRankSplitDataset
 
-import wandb
-
 
 # multi-GPU training script based on https://pytorch.org/tutorials/intermediate/ddp_tutorial.html
 
@@ -231,14 +229,10 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
             if args.rank == 0:
                 writer.add_scalars("1 loss/1 step", {logid: losses.avg}, step)
                 writer.add_scalars("2 accuracy/1 step", {logid: accuracies.avg}, step)
-                wandb.log({"1 loss/1 step": {logid: losses.avg}, "step": step})
-                wandb.log({"2 accuracy/1 step": {logid: accuracies.avg}, "step": step})
                 logger.info(f"{datetime.now()} epoch: {epoch:>4} step: {step:>8}{' '*29}{logid:<10} loss: {losses.avg:<10.3f} acc: {accuracies.avg:<10.3f}")
                 if step_epoch == "epoch":
                     writer.add_scalars("1 loss/2 epoch", {logid: losses.avg}, epoch)
                     writer.add_scalars("2 accuracy/2 epoch", {logid: accuracies.avg}, epoch)
-                    wandb.log({"1 loss/2 epoch": {logid: losses.avg}, "epoch": epoch})
-                    wandb.log({"2 accuracy/2 epoch": {logid: accuracies.avg}, "epoch": epoch})
 
 
     def one_epoch(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch, step):
@@ -323,10 +317,6 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
                 writer.add_scalars("2 accuracy/1 step", {"train": reduced_acc.item()}, step)
                 writer.add_scalars("3 temperature/1 step", {"train": model.module.temperature.data.item()}, step)
                 writer.add_scalars("4 timings/1 step", {"dt": dt, "bt": bt}, step)
-                wandb.log({"1 loss/1 step": {"train": reduced_loss.item()}, "step": step})
-                wandb.log({"2 accuracy/1 step": {"train": reduced_acc.item()}, "step": step})
-                wandb.log({"3 temperature/1 step": {"train": model.module.temperature.data.item()}, "step": step})
-                wandb.log({"4 timings/1 step": {"dt": dt, "bt": bt}, "step": step})
                 if (step % args.save_interval_step == 0) and (step != 0):
                     path_save = os.path.join(args.path_model, f"{'_'.join(str(datetime.now()).split('.')[0].split(' '))}_step{step:08d}.pt")
                     torch.save(ddp_model.module.state_dict(), path_save)
@@ -351,10 +341,6 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
             writer.add_scalars("2 accuracy/2 epoch", {"train": accuracies.avg}, epoch)
             writer.add_scalars("4 timings/2 step", {"dt": data_time.avg, "bt": batch_time.avg}, epoch)
             writer.add_scalars("4 timings/3 epoch", {"et": epoch_time}, epoch)
-            wandb.log({"1 loss/2 epoch": {"train": losses.avg}, "epoch": epoch})
-            wandb.log({"2 accuracy/2 epoch": {"train": accuracies.avg}, "epoch": epoch})
-            wandb.log({"4 timings/2 step": {"dt": data_time.avg, "bt": batch_time.avg}, "epoch": epoch})
-            wandb.log({"4 timings/3 epoch": {"et": epoch_time}, "epoch": epoch})
             if epoch % args.save_interval_epoch == 0:
                 path_save = os.path.join(args.path_model, f"{'_'.join(str(datetime.now()).split('.')[0].split(' '))}_epoch{epoch:03d}.pt")
                 torch.save(ddp_model.module.state_dict(), path_save)
@@ -366,9 +352,6 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
 
 
         return model, optimizer, step
-
-    if args.rank == 0:
-        wandb.watch(model)
 
     logger.info(f"{datetime.now()} rank: {args.rank} start training")
     for epoch in range(args.epochs):
@@ -407,7 +390,6 @@ def trainer(rank, world_size):
     logger.info(f"{datetime.now()} rank: {args.rank} start logging")
     if args.rank == 0:
         writer = SummaryWriter(log_dir=args.path_tb, flush_secs=2)
-        wandb.init(name=args.id, project='clasp', entity='eleutherai')
 
     if args.rank == 0:
         # show args
