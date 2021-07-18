@@ -3,18 +3,27 @@
 Repository for creating models pretrained on language and aminoacid sequences similar to [ConVIRT](https://arxiv.org/abs/2010.00747), [CLIP](https://openai.com/blog/clip/), and [ALIGN](https://arxiv.org/abs/2102.05918).
 
 
+## To dos
+
+1. Finish current big run with unprocessed data.
+2. Evaluate the model on zero-shot tasks. See the [introduction inference notebook](https://github.com/MicPie/clasp/blob/main/notebooks/inference_introduction.ipynb) based on the checkpoints from below.
+3. Train new model with processed data. See the preprocessing scripts in the `preproc` directory.
+
+*If you are interested in this project and you want to contribute feel free to get in touch (see "Discussion below).*
+
+
 ## Updates
 
-Run 44 with UniProt full dataset (~213 mio samples):
-<p align="center"><img src="https://github.com/MicPie/clasp/blob/main/img/CLASP_run44_step76063.png"></p>
+Run 44-48 with UniProt full dataset (~213 mio samples):
+<p align="center"><img src="https://github.com/MicPie/clasp/blob/main/img/CLASP_run44-48_step231798.png"></p>
+Model checkpoint:
+[230t steps, train: loss: 1.067, acc: 0.702, valid-id: loss: 1.587: acc: 0.561, valid-ood: loss: 2.545: acc: 0.352 (~1GB)](https://drive.google.com/file/d/1f7Glzw6RthozU3vH1i18xhuXa5FIYl77/view?usp=sharing)
 
 Run 39 with UniProt SProt dataset (~0.5 mio samples):
 <p align="center"><img src="https://github.com/MicPie/clasp/blob/main/img/CLASP_run39_step42914.png"></p>
 
 Comparison run 39 and run 44 from above:
 <p align="center"><img src="https://github.com/MicPie/clasp/blob/main/img/CLASP_run39_run44.png"></p>
-
-*We will release soon a checkpoint from run 44 with a jupyter notebook on how it could be potentially used.*
 
 *Work in progress, more updates soon!*
 
