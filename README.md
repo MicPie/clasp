@@ -16,14 +16,16 @@ Repository for creating models pretrained on language and aminoacid sequences si
 
 Run 44-48 with UniProt full dataset (~213 mio samples):
 <p align="center"><img src="https://github.com/MicPie/clasp/blob/main/img/CLASP_run44-48_step231798.png"></p>
-Model checkpoint:
-[230t steps, train: loss: 1.067, acc: 0.702, valid-id: loss: 1.587: acc: 0.561, valid-ood: loss: 2.545: acc: 0.352 (~1GB)](https://drive.google.com/file/d/1f7Glzw6RthozU3vH1i18xhuXa5FIYl77/view?usp=sharing)
+Model checkpoint: [230t steps, train: loss: 1.067, acc: 0.702, valid-id: loss: 1.587: acc: 0.561, valid-ood: loss: 2.545: acc: 0.352 (~1GB)](https://drive.google.com/file/d/1f7Glzw6RthozU3vH1i18xhuXa5FIYl77/view?usp=sharing)
+
 
 Run 39 with UniProt SProt dataset (~0.5 mio samples):
 <p align="center"><img src="https://github.com/MicPie/clasp/blob/main/img/CLASP_run39_step42914.png"></p>
 
+
 Comparison run 39 and run 44 from above:
 <p align="center"><img src="https://github.com/MicPie/clasp/blob/main/img/CLASP_run39_run44.png"></p>
+
 
 *Work in progress, more updates soon!*
 
