@@ -9,7 +9,7 @@ Repository for creating models pretrained on language and aminoacid sequences si
 2. Evaluate the model on zero-shot tasks. See the [introduction inference notebook](https://github.com/MicPie/clasp/blob/main/notebooks/inference_introduction.ipynb) based on the checkpoints from below.
 3. Train new model with processed data. See the preprocessing scripts in the `preproc` directory.
 
-*If you are interested in this project and you want to contribute feel free to get in touch (see "Discussion below).*
+*If you are interested in this project and you want to contribute feel free to get in touch (see [Discussion](https://github.com/MicPie/clasp#discussion) below).*
 
 
 ## Updates
@@ -25,7 +25,7 @@ Run 39 with UniProt SProt dataset (~0.5 mio samples):
 <br>
 Comparison run 39 and run 44 from above:
 <p align="center"><img src="https://github.com/MicPie/clasp/blob/main/img/CLASP_run39_run44.png"></p>
-<br>
+
 *Work in progress, more updates soon!*
 
 
