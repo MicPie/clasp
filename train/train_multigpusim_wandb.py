@@ -297,6 +297,7 @@ def train_ddp(args, model, optimizer, dl_train, dl_valid_id, dl_valid_ood, epoch
 
             loss = ((F.cross_entropy(sim_text, labels) + F.cross_entropy(sim_bioseq, labels)) / 2).mean()
 
+            dist.barrier()
             loss.backward()
             clip_grad_norm_(model.parameters(), 1.)
             optimizer.step()
