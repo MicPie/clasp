@@ -17,7 +17,11 @@ setup(
   ],
   install_requires=[
     'einops>=0.3',
-    'torch>=1.6'
+    'torch>=1.6',
+    'ftfy',
+    'regex',
+    'requests',
+    'matplotlib'
   ],
   classifiers=[
     'Development Status :: 4 - Beta',
