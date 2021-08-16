@@ -26,4 +26,6 @@ setup(
     'License :: OSI Approved :: MIT License',
     'Programming Language :: Python :: 3.6',
   ],
+  package_data={'': ['data/bpe_simple_vocab_16e6.txt']},
+  include_package_data=True
 )
