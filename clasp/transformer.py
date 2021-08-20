@@ -238,7 +238,7 @@ class Transformer(nn.Module):
 
         self.norm = nn.LayerNorm(dim)
 
-    def forward(self, x, mask = None):
+    def forward(self, x, mask = None, return_all_embeddings=False):
         b, n, device = *x.shape, x.device
 
         x = self.token_emb(x)
@@ -254,5 +254,6 @@ class Transformer(nn.Module):
         x += rearrange(pos_emb, 'n d -> () n d')
 
         x = self.net(x)
+        x = self.norm(x)
 
-        return self.norm(x[:, 0])
+        return x[:, 1:, :] if return_all_embeddings else x[:, 0]
