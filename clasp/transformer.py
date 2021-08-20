@@ -256,4 +256,4 @@ class Transformer(nn.Module):
         x = self.net(x)
         x = self.norm(x)
 
-        return x[:, 1:, :] if return_all_embeddings else x[:, 0]
+        return x if return_all_embeddings else x[:, 0]
