@@ -17,7 +17,11 @@ setup(
   ],
   install_requires=[
     'einops>=0.3',
-    'torch>=1.6'
+    'torch>=1.6',
+    'ftfy',
+    'regex',
+    'requests',
+    'matplotlib'
   ],
   classifiers=[
     'Development Status :: 4 - Beta',
@@ -26,4 +30,6 @@ setup(
     'License :: OSI Approved :: MIT License',
     'Programming Language :: Python :: 3.6',
   ],
+  package_data={'': ['data/bpe_simple_vocab_16e6.txt']},
+  include_package_data=True
 )
