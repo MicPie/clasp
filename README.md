@@ -8,15 +8,15 @@ Repository for creating models pretrained on language and aminoacid sequences si
 1. Finish current big run with preprocessed data (i.e., only preprocessing is the removal of AA length and MW information from the text input with the regex patterns `\d+ AA` and `\d+ MW`.)
 2. Evaluate the model on zero-shot tasks. See the [introduction inference notebook](https://github.com/MicPie/clasp/blob/main/notebooks/inference_introduction.ipynb) based on the checkpoints from below.
 
-**Currently this project is on hold as we don't have the compute to continue the model training.
-If you want to contribute compute or to extend the project feel free to get in touch (see [Discussion](https://github.com/MicPie/clasp  #discussion) below).**
+**Currently this project is on hold as we don't have the compute to continue the model training.<br>
+If you want to contribute compute or to extend the project feel free to get in touch (see [Discussion](https://github.com/MicPie/clasp#discussion) below).**
 
 
 ## Updates
 
 Run 53-54 with UniProt full dataset (~213 mio samples):
 <p align="center"><img src="https://github.com/MicPie/clasp/blob/main/img/CLASP_run53-54_step174958.png"></p><br>
-Model checkpoint:<br>
+Last model checkpoint:<br>
 <a href="https://drive.google.com/file/d/1kKxPVDljW27WJYK6T9Z_m5yh33G-n89I/view">175t steps train: loss: 1.667, acc: 0.556, valid-id: loss: 2.184, acc: 0.418, valid-ood: loss: 2.918: acc: 0.268 gdrive download (~1GB)</a>
 
 
