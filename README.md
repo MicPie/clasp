@@ -17,7 +17,7 @@ If you want to contribute compute or to extend the project feel free to get in t
 Run 53-54 with UniProt full dataset (~213 mio samples):
 <p align="center"><img src="https://github.com/MicPie/clasp/blob/main/img/CLASP_run53-54_step174958.png"></p><br>
 Last model checkpoint:<br>
-<a href="https://drive.google.com/file/d/1kKxPVDljW27WJYK6T9Z_m5yh33G-n89I/view">175t steps train: loss: 1.667, acc: 0.556, valid-id: loss: 2.184, acc: 0.418, valid-ood: loss: 2.918: acc: 0.268 gdrive download (~1GB)</a>
+<a href="https://drive.google.com/file/d/1kKxPVDljW27WJYK6T9Z_m5yh33G-n89I/view">175t steps train: loss: 1.667, acc: 0.556, valid-id: loss: 2.184, acc: 0.418, valid-ood: loss: 2.918, acc: 0.268; gdrive download (~1GB)</a>
 
 
 ## Discussion
