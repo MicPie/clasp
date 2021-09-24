@@ -34,7 +34,7 @@ For model training the data provided by [UniProt](https://www.uniprot.org/) is u
 You can install the requirements with the following
 
 ```bash
-$ python setup.py install --user
+$ pip install .
 ```
 
 Then, you must install Microsoft's sparse attention CUDA kernel with the following two steps.
